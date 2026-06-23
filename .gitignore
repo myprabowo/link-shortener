@@ -1,0 +1,12 @@
+# Ignore sensitive configuration file
+config.php
+README_PRIVATE.md
+
+# Operating System specific files
+.DS_Store
+Thumbs.db
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.swp
