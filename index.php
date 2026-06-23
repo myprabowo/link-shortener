@@ -20,6 +20,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
 $isLoggedIn = isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true;
 
+// Handle Delete
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete' && $isLoggedIn) {
+    if (isset($_POST['id'])) {
+        $stmt = $pdo->prepare("DELETE FROM links WHERE id = ?");
+        $stmt->execute([$_POST['id']]);
+        header("Location: index.php");
+        exit;
+    }
+}
+
 $linksData = [];
 if ($isLoggedIn) {
     try {
@@ -82,7 +92,7 @@ if ($isLoggedIn) {
 
         .container {
             width: 100%;
-            max-width: 600px;
+            max-width: <?php echo $isLoggedIn ? '900px' : '600px'; ?>;
             padding: 2rem;
             z-index: 10;
         }
@@ -393,7 +403,7 @@ if ($isLoggedIn) {
             <?php else: ?>
             <p class="subtitle">Shorten long links into <b>s.pknstan.my.id</b></p>
 
-            <form id="shortener-form">
+            <form id="shortener-form" style="max-width: 500px; margin: 0 auto;">
                 <div class="input-group">
                     <div class="input-wrapper">
                         <svg class="input-icon" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
@@ -430,12 +440,13 @@ if ($isLoggedIn) {
                             <th>Original URL</th>
                             <th>Clicks</th>
                             <th>Date</th>
+                            <th style="text-align: right;">Action</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php if (empty($linksData)): ?>
                         <tr>
-                            <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 2rem;">No links created yet.</td>
+                            <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2rem;">No links created yet.</td>
                         </tr>
                         <?php else: ?>
                             <?php foreach ($linksData as $link): ?>
@@ -452,6 +463,13 @@ if ($isLoggedIn) {
                                 </td>
                                 <td><?php echo (int)$link['clicks']; ?></td>
                                 <td><?php echo date('M j, Y', strtotime($link['created_at'])); ?></td>
+                                <td style="text-align: right;">
+                                    <form method="POST" action="" onsubmit="return confirm('Are you sure you want to delete this link?');" style="margin: 0;">
+                                        <input type="hidden" name="action" value="delete">
+                                        <input type="hidden" name="id" value="<?php echo $link['id']; ?>">
+                                        <button type="submit" style="background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); padding: 0.4rem 0.8rem; font-size: 0.85rem; border-radius: 8px; width: auto; cursor: pointer; transition: all 0.2s;">Delete</button>
+                                    </form>
+                                </td>
                             </tr>
                             <?php endforeach; ?>
                         <?php endif; ?>
