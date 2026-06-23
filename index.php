@@ -19,6 +19,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 }
 
 $isLoggedIn = isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true;
+
+$linksData = [];
+if ($isLoggedIn) {
+    try {
+        $stmt = $pdo->query("SELECT id, short_code, original_url, clicks, created_at FROM links ORDER BY created_at DESC LIMIT 100");
+        $linksData = $stmt->fetchAll();
+    } catch (PDOException $e) {
+        $linksData = [];
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -214,6 +224,59 @@ $isLoggedIn = isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true;
             color: #fca5a5;
         }
 
+        @keyframes blobBounce {
+            0%, 100% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-20px) scale(1.05); }
+        }
+
+        /* Table Styles */
+        .table-container {
+            margin-top: 2rem;
+            width: 100%;
+            overflow-x: auto;
+            border-radius: 12px;
+            background: rgba(15, 23, 42, 0.4);
+            border: 1px solid var(--border-color);
+        }
+        .table-container table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+        .table-container th, .table-container td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-main);
+            font-size: 0.95rem;
+        }
+        .table-container th {
+            background: rgba(255, 255, 255, 0.05);
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .table-container tr:last-child td {
+            border-bottom: none;
+        }
+        .table-container tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+        .truncate {
+            max-width: 250px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: inline-block;
+            vertical-align: middle;
+        }
+        .table-link {
+            color: #60a5fa;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .table-link:hover {
+            text-decoration: underline;
+        }
+
         @keyframes slideUp {
             to { opacity: 1; transform: translateY(0); }
         }
@@ -357,11 +420,50 @@ $isLoggedIn = isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true;
             <div class="result-container error-container" id="error-container">
                 <p id="error-msg">An error occurred.</p>
             </div>
+            
+            <!-- Link Dashboard -->
+            <div class="table-container" style="margin-top: 3rem;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Short URL</th>
+                            <th>Original URL</th>
+                            <th>Clicks</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (empty($linksData)): ?>
+                        <tr>
+                            <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 2rem;">No links created yet.</td>
+                        </tr>
+                        <?php else: ?>
+                            <?php foreach ($linksData as $link): ?>
+                            <tr>
+                                <td>
+                                    <a href="<?php echo BASE_URL . htmlspecialchars($link['short_code']); ?>" target="_blank" class="table-link">
+                                        /<?php echo htmlspecialchars($link['short_code']); ?>
+                                    </a>
+                                </td>
+                                <td>
+                                    <span class="truncate" title="<?php echo htmlspecialchars($link['original_url']); ?>">
+                                        <?php echo htmlspecialchars($link['original_url']); ?>
+                                    </span>
+                                </td>
+                                <td><?php echo (int)$link['clicks']; ?></td>
+                                <td><?php echo date('M j, Y', strtotime($link['created_at'])); ?></td>
+                            </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+
             <?php endif; ?>
         </div>
         
         <footer>
-            &copy; <?php echo date("Y"); ?> PKNSTAN. All rights reserved.
+            &copy; <?php echo date("Y"); ?> Muhammad Yoga Prabowo. All rights reserved.
         </footer>
     </div>
 
