@@ -21,8 +21,8 @@ try {
         $updateStmt = $pdo->prepare("UPDATE links SET clicks = clicks + 1 WHERE id = ?");
         $updateStmt->execute([$link['id']]);
 
-        // Redirect to the original URL
-        header('Location: ' . $link['original_url'], true, 301); // 301 Moved Permanently is good for SEO/Shorteners
+        // Redirect to the original URL (302 instead of 301 to prevent browser cache and ensure all clicks are counted)
+        header('Location: ' . $link['original_url'], true, 302);
         exit;
     } else {
         // Short code not found
