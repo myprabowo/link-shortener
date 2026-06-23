@@ -12,8 +12,8 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 // Get Headers for API Key validation
-$headers = getallheaders();
-$apiKeyHeader = $headers['X-API-Key'] ?? $headers['x-api-key'] ?? null;
+$headers = function_exists('getallheaders') ? getallheaders() : [];
+$apiKeyHeader = $headers['X-API-Key'] ?? $headers['x-api-key'] ?? $_SERVER['HTTP_X_API_KEY'] ?? null;
 
 // Get the URL and possibly api_key from POST data (supports both JSON and form data)
 $inputJSON = file_get_contents('php://input');
