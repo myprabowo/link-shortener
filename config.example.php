@@ -13,8 +13,8 @@ define('BASE_URL', 'https://s.domain.com/');
 
 // Authentication Credentials
 define('ADMIN_USER', 'admin');
-define('ADMIN_PASS', 'rahasia123'); // Ganti dengan password yang lebih kuat
-define('API_KEY', 'your_secret_api_key'); // Ganti dengan API Key yang sulit ditebak
+define('ADMIN_PASS', 'your_password'); // Replace with a stronger password
+define('API_KEY', 'your_secret_api_key'); // Replace with a hard-to-guess API Key
 
 // Establish Database Connection
 try {
@@ -26,7 +26,8 @@ try {
 }
 
 // Function to generate a random string for the short code
-function generateShortCode($length = 6) {
+function generateShortCode($length = 6)
+{
     $characters = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
     $charactersLength = strlen($characters);
     $randomString = '';

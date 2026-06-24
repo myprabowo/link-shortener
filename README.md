@@ -25,8 +25,8 @@ This application provides an interactive web interface for users and an API endp
 Open the `config.php` file and adjust your database access credentials:
 ```php
 define('DB_HOST', 'localhost');
-define('DB_USER', 'root');
-define('DB_PASS', 'your_password');
+define('DB_USER', '***');
+define('DB_PASS', '***');
 define('DB_NAME', 'url_shortener');
 
 // Ensure this base URL matches your domain and ends with a trailing slash (/)
@@ -62,7 +62,7 @@ define('BASE_URL', 'https://s.yourdomain.com/');
 
 ### 1. Using the Web UI
 Simply access `https://s.yourdomain.com/` (or `index.php`) through a web browser.
-1. Enter your *Username* (`admin`) and *Password* (`rahasia123` - can be changed in `config.php`).
+1. Enter your *Username* (`***`) and *Password* (`***` - can be changed in `config.php`).
 2. Enter the long URL into the provided box, and click **Shorten**.
 
 ### 2. Using the API (n8n Integration)
@@ -72,7 +72,7 @@ You can call this API using the **HTTP Request** node in n8n with the following 
 - **URL**: `https://s.yourdomain.com/api.php`
 - **Headers**:
   - `Content-Type`: `application/json`
-  - `X-API-Key`: `your_api_key_secret` (Replace with your API Key in `config.php`)
+  - `X-API-Key`: `***` (Replace with your API Key in `config.php`)
 - **Body Content Type**: `JSON` (or form-data)
 - **Parameters / Body**:
   ```json
