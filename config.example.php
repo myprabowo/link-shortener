@@ -3,10 +3,7 @@
 // Rename this file to config.php and fill in your actual credentials
 
 // Database Configuration
-define('DB_HOST', 'localhost');
-define('DB_USER', 'your_db_user');
-define('DB_PASS', 'your_db_password');
-define('DB_NAME', 'your_db_name');
+define('DB_FILE', __DIR__ . '/database.sqlite');
 
 // Base URL for the shortened links (must include trailing slash)
 define('BASE_URL', 'https://s.domain.com/');
@@ -18,9 +15,18 @@ define('API_KEY', 'your_secret_api_key'); // Replace with a hard-to-guess API Ke
 
 // Establish Database Connection
 try {
-    $pdo = new PDO("mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4", DB_USER, DB_PASS);
+    $pdo = new PDO("sqlite:" . DB_FILE);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+    
+    // Automatically create the table if it doesn't exist
+    $pdo->exec("CREATE TABLE IF NOT EXISTS links (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        short_code TEXT NOT NULL UNIQUE,
+        original_url TEXT NOT NULL,
+        clicks INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )");
 } catch (PDOException $e) {
     die("Database connection failed: " . $e->getMessage());
 }

@@ -1,6 +1,6 @@
 # Your Link Shortener
 
-A PHP and MySQL-based URL Shortener application designed specifically to run on the `s.yourdomain.com` domain.
+A PHP and SQLite-based URL Shortener application designed specifically to run on the `s.yourdomain.com` domain.
 This application provides an interactive web interface for users and an API endpoint for automation integrations such as **n8n**.
 
 ## Features
@@ -14,23 +14,22 @@ This application provides an interactive web interface for users and an API endp
 ## 🛠️ Installation Guide (Setup)
 
 ### 1. Database
-- Create a MySQL database (e.g., `url_shortener`).
-- Import the table by executing the `schema.sql` file in that database.
-  ```sql
-  -- Example command if using the command line:
-  mysql -u root -p url_shortener < schema.sql
-  ```
+- The application uses SQLite. You don't need to install or configure a database server manually.
+- The database file (`database.sqlite`) and its required tables will be created automatically upon the first run.
 
 ### 2. Configuration
 Open the `config.php` file and adjust your database access credentials:
 ```php
-define('DB_HOST', 'localhost');
-define('DB_USER', '***');
-define('DB_PASS', '***');
-define('DB_NAME', 'url_shortener');
+// Database Configuration
+define('DB_FILE', __DIR__ . '/database.sqlite');
 
 // Ensure this base URL matches your domain and ends with a trailing slash (/)
 define('BASE_URL', 'https://s.yourdomain.com/');
+
+// Authentication Credentials
+define('ADMIN_USER', 'admin');
+define('ADMIN_PASS', 'your_password'); // Replace with a stronger password
+define('API_KEY', 'your_secret_api_key'); // Replace with a hard-to-guess API Key
 ```
 
 ### 3. Domain Settings (DNS)
@@ -62,7 +61,7 @@ define('BASE_URL', 'https://s.yourdomain.com/');
 
 ### 1. Using the Web UI
 Simply access `https://s.yourdomain.com/` (or `index.php`) through a web browser.
-1. Enter your *Username* (`***`) and *Password* (`***` - can be changed in `config.php`).
+1. Enter your *Username* (`admin`) and *Password* (`your_password` - can be changed in `config.php`).
 2. Enter the long URL into the provided box, and click **Shorten**.
 
 ### 2. Using the API (n8n Integration)
@@ -72,7 +71,7 @@ You can call this API using the **HTTP Request** node in n8n with the following 
 - **URL**: `https://s.yourdomain.com/api.php`
 - **Headers**:
   - `Content-Type`: `application/json`
-  - `X-API-Key`: `***` (Replace with your API Key in `config.php`)
+  - `X-API-Key`: `your_api_key_secret` (Replace with your API Key in `config.php`)
 - **Body Content Type**: `JSON` (or form-data)
 - **Parameters / Body**:
   ```json
