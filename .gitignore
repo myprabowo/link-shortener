@@ -1,6 +1,7 @@
 # Ignore sensitive configuration file
 config.php
 README_PRIVATE.md
+n8n_node.json
 
 # Operating System specific files
 .DS_Store
