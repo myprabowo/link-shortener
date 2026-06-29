@@ -25,9 +25,11 @@ $providedApiKey = null;
 if (isset($input['url'])) {
     $url = $input['url'];
     $providedApiKey = $input['api_key'] ?? null;
+    $customCode = $input['custom_code'] ?? null;
 } elseif (isset($_POST['url'])) {
     $url = $_POST['url'];
     $providedApiKey = $_POST['api_key'] ?? null;
+    $customCode = $_POST['custom_code'] ?? null;
 }
 
 // Check API Key (Header takes precedence over body)
@@ -46,31 +48,51 @@ if (!$url || !filter_var($url, FILTER_VALIDATE_URL)) {
 }
 
 try {
-    // Check if the URL already exists to prevent duplicates (optional but good practice)
-    $stmt = $pdo->prepare("SELECT short_code FROM links WHERE original_url = ? LIMIT 1");
-    $stmt->execute([$url]);
-    $existing = $stmt->fetch();
-
-    if ($existing) {
-        $shortCode = $existing['short_code'];
-    } else {
-        // Generate a unique short code
-        $shortCode = generateShortCode();
-        $isUnique = false;
-
-        while (!$isUnique) {
-            $stmt = $pdo->prepare("SELECT id FROM links WHERE short_code = ?");
-            $stmt->execute([$shortCode]);
-            if ($stmt->rowCount() == 0) {
-                $isUnique = true;
-            } else {
-                $shortCode = generateShortCode();
-            }
+    // Check if custom code is provided
+    if (!empty($customCode)) {
+        // Sanitize custom code
+        $customCode = preg_replace('/[^a-zA-Z0-9_-]/', '', $customCode);
+        
+        // Check if custom code is already taken
+        $stmt = $pdo->prepare("SELECT id FROM links WHERE short_code = ?");
+        $stmt->execute([$customCode]);
+        if ($stmt->rowCount() > 0) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Custom short code is already in use.']);
+            exit;
         }
-
+        
+        $shortCode = $customCode;
         // Insert into database
         $stmt = $pdo->prepare("INSERT INTO links (short_code, original_url) VALUES (?, ?)");
         $stmt->execute([$shortCode, $url]);
+    } else {
+        // Check if the URL already exists to prevent duplicates (optional but good practice)
+        $stmt = $pdo->prepare("SELECT short_code FROM links WHERE original_url = ? LIMIT 1");
+        $stmt->execute([$url]);
+        $existing = $stmt->fetch();
+    
+        if ($existing) {
+            $shortCode = $existing['short_code'];
+        } else {
+            // Generate a unique short code
+            $shortCode = generateShortCode();
+            $isUnique = false;
+    
+            while (!$isUnique) {
+                $stmt = $pdo->prepare("SELECT id FROM links WHERE short_code = ?");
+                $stmt->execute([$shortCode]);
+                if ($stmt->rowCount() == 0) {
+                    $isUnique = true;
+                } else {
+                    $shortCode = generateShortCode();
+                }
+            }
+    
+            // Insert into database
+            $stmt = $pdo->prepare("INSERT INTO links (short_code, original_url) VALUES (?, ?)");
+            $stmt->execute([$shortCode, $url]);
+        }
     }
 
     $shortUrl = BASE_URL . $shortCode;

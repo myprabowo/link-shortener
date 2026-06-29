@@ -153,7 +153,7 @@ if ($isLoggedIn) {
             color: var(--text-muted);
         }
 
-        input[type="url"] {
+        input[type="url"], input.custom-input {
             width: 100%;
             padding: 1.25rem 1.25rem 1.25rem 3.5rem;
             border-radius: 16px;
@@ -166,7 +166,7 @@ if ($isLoggedIn) {
             box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
         }
 
-        input[type="url"]:focus {
+        input[type="url"]:focus, input.custom-input:focus {
             border-color: var(--primary);
             box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2), inset 0 2px 4px rgba(0,0,0,0.1);
             background: rgba(15, 23, 42, 0.8);
@@ -406,7 +406,7 @@ if ($isLoggedIn) {
             <p class="subtitle">Shorten long links into <b>s.pknstan.my.id</b></p>
 
             <form id="shortener-form" style="max-width: 500px; margin: 0 auto;">
-                <div class="input-group">
+                <div class="input-group" style="margin-bottom: 1rem;">
                     <div class="input-wrapper">
                         <svg class="input-icon" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
                         <input type="url" id="long-url" placeholder="Enter long URL here..." required autocomplete="off">
@@ -415,6 +415,12 @@ if ($isLoggedIn) {
                         <span>Shorten</span>
                         <div class="spinner" id="btn-spinner"></div>
                     </button>
+                </div>
+                <div class="input-group">
+                    <div class="input-wrapper" style="width: 100%;">
+                        <svg class="input-icon" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                        <input type="text" class="custom-input" id="custom-code" placeholder="Custom alias (optional)" autocomplete="off">
+                    </div>
                 </div>
             </form>
 
@@ -493,6 +499,7 @@ if ($isLoggedIn) {
             e.preventDefault();
             
             const urlInput = document.getElementById('long-url').value;
+            const customCodeInput = document.getElementById('custom-code').value;
             const submitBtn = document.getElementById('submit-btn');
             const btnText = submitBtn.querySelector('span');
             const spinner = document.getElementById('btn-spinner');
@@ -517,7 +524,7 @@ if ($isLoggedIn) {
                         'Content-Type': 'application/json',
                         'X-API-Key': '<?php echo API_KEY; ?>'
                     },
-                    body: JSON.stringify({ url: urlInput })
+                    body: JSON.stringify({ url: urlInput, custom_code: customCodeInput })
                 });
                 
                 const data = await response.json();
