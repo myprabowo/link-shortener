@@ -47,11 +47,17 @@ if ($finalApiKey !== API_KEY) {
 
 if (!$url || !filter_var($url, FILTER_VALIDATE_URL)) {
     http_response_code(400);
-    echo json_encode(['error' => 'Invalid or missing URL provided.']);
+    echo json_encode(['error' => 'Invalid or missing destination URL provided.']);
     exit;
 }
 
-$sanitizedTitle = !empty($title) ? trim(strip_tags($title)) : null;
+$sanitizedTitle = !empty($title) ? trim(strip_tags($title)) : '';
+
+if (empty($sanitizedTitle)) {
+    http_response_code(400);
+    echo json_encode(['error' => 'Title or description is required.']);
+    exit;
+}
 
 try {
     // Check if custom code is provided
@@ -59,6 +65,12 @@ try {
         // Sanitize custom code
         $customCode = preg_replace('/[^a-zA-Z0-9_-]/', '', $customCode);
         
+        if (empty($customCode)) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Invalid custom alias provided.']);
+            exit;
+        }
+
         // Check if custom code is already taken
         $stmt = $pdo->prepare("SELECT id FROM links WHERE short_code = ?");
         $stmt->execute([$customCode]);
@@ -73,32 +85,23 @@ try {
         $stmt = $pdo->prepare("INSERT INTO links (short_code, original_url, title) VALUES (?, ?, ?)");
         $stmt->execute([$shortCode, $url, $sanitizedTitle]);
     } else {
-        // Check if the URL already exists with matching title to prevent unnecessary duplicate entries
-        $stmt = $pdo->prepare("SELECT short_code FROM links WHERE original_url = ? LIMIT 1");
-        $stmt->execute([$url]);
-        $existing = $stmt->fetch();
-    
-        if ($existing && empty($sanitizedTitle)) {
-            $shortCode = $existing['short_code'];
-        } else {
-            // Generate a unique short code
-            $shortCode = generateShortCode();
-            $isUnique = false;
-    
-            while (!$isUnique) {
-                $stmt = $pdo->prepare("SELECT id FROM links WHERE short_code = ?");
-                $stmt->execute([$shortCode]);
-                if ($stmt->rowCount() == 0) {
-                    $isUnique = true;
-                } else {
-                    $shortCode = generateShortCode();
-                }
+        // Generate a unique short code
+        $shortCode = generateShortCode();
+        $isUnique = false;
+
+        while (!$isUnique) {
+            $stmt = $pdo->prepare("SELECT id FROM links WHERE short_code = ?");
+            $stmt->execute([$shortCode]);
+            if ($stmt->rowCount() == 0) {
+                $isUnique = true;
+            } else {
+                $shortCode = generateShortCode();
             }
-    
-            // Insert into database
-            $stmt = $pdo->prepare("INSERT INTO links (short_code, original_url, title) VALUES (?, ?, ?)");
-            $stmt->execute([$shortCode, $url, $sanitizedTitle]);
         }
+
+        // Insert into database
+        $stmt = $pdo->prepare("INSERT INTO links (short_code, original_url, title) VALUES (?, ?, ?)");
+        $stmt->execute([$shortCode, $url, $sanitizedTitle]);
     }
 
     $shortUrl = BASE_URL . $shortCode;

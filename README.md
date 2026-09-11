@@ -7,7 +7,7 @@ This application provides an interactive web interface for administration and an
 1. **Craft Web Interface**: Built with modern, accessible HTML/CSS adhering to antislop principles, complete with Light and Dark themes.
 2. **Link Metadata**: Supports Title/Description, Custom Alias, and Destination URLs.
 3. **Interactive Actions**: View/Download QR codes, Edit existing short links, and Delete links.
-4. **API Endpoint (`api.php`)**: Allows programmatic URL shortening with optional title and custom alias.
+4. **API Endpoint (`api.php`)**: Allows programmatic URL shortening with required title/description, destination URL, and optional custom alias.
 5. **URL Rewriting**: Automatic routing from `s.pknstan.id/xyz` to destination URLs via `.htaccess` or Nginx rewrite rules.
 6. **Click Tracking**: Tracks total clicks per short link.
 

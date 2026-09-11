@@ -42,8 +42,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $isLogge
         $customCode = preg_replace('/[^a-zA-Z0-9_-]/', '', trim($_POST['short_code'] ?? ''));
         $title = !empty($_POST['title']) ? trim(strip_tags($_POST['title'])) : null;
 
-        if (!$id || !$url || empty($customCode)) {
-            $actionError = 'Invalid data provided for link edit.';
+        if (!$id || !$url || empty($customCode) || empty($title)) {
+            $actionError = 'Invalid data provided for link edit. Title, short code, and destination URL are required.';
         } else {
             try {
                 // Check if custom code belongs to another link
@@ -988,12 +988,12 @@ if ($isLoggedIn) {
 
                 <div class="form-row two-col">
                     <div class="form-field">
-                        <label class="form-label" for="link-title">Title / Description (Optional)</label>
+                        <label class="form-label" for="link-title">Title / Description <span style="color: var(--danger);">*</span></label>
                         <div class="input-group">
                             <span class="input-icon-left" aria-hidden="true">
                                 <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h7"/></svg>
                             </span>
-                            <input type="text" id="link-title" class="input-text" placeholder="e.g. STAN Registration Guide" autocomplete="off">
+                            <input type="text" id="link-title" class="input-text" placeholder="e.g. STAN Registration Guide" required autocomplete="off">
                         </div>
                     </div>
 
@@ -1202,8 +1202,8 @@ if ($isLoggedIn) {
                 <input type="hidden" name="id" id="edit-modal-id">
                 
                 <div class="form-field">
-                    <label class="form-label" for="edit-modal-title-input">Title / Description</label>
-                    <input type="text" name="title" id="edit-modal-title-input" class="input-text no-icon" placeholder="e.g. STAN Registration Guide">
+                    <label class="form-label" for="edit-modal-title-input">Title / Description <span style="color: var(--danger);">*</span></label>
+                    <input type="text" name="title" id="edit-modal-title-input" class="input-text no-icon" required placeholder="e.g. STAN Registration Guide">
                 </div>
 
                 <div class="form-field">
