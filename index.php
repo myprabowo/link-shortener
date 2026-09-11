@@ -20,20 +20,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
 $isLoggedIn = isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true;
 
-// Handle Delete
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete' && $isLoggedIn) {
-    if (isset($_POST['id'])) {
-        $stmt = $pdo->prepare("DELETE FROM links WHERE id = ?");
-        $stmt->execute([$_POST['id']]);
-        header("Location: index.php");
-        exit;
+$actionMessage = '';
+$actionError = '';
+
+if (isset($_GET['updated'])) {
+    $actionMessage = 'Link updated successfully.';
+}
+
+// Handle Delete & Edit Actions
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $isLoggedIn) {
+    if ($_POST['action'] === 'delete') {
+        if (isset($_POST['id'])) {
+            $stmt = $pdo->prepare("DELETE FROM links WHERE id = ?");
+            $stmt->execute([$_POST['id']]);
+            header("Location: index.php");
+            exit;
+        }
+    } elseif ($_POST['action'] === 'edit') {
+        $id = filter_var($_POST['id'] ?? null, FILTER_VALIDATE_INT);
+        $url = filter_var($_POST['original_url'] ?? '', FILTER_VALIDATE_URL);
+        $customCode = preg_replace('/[^a-zA-Z0-9_-]/', '', trim($_POST['short_code'] ?? ''));
+        $title = !empty($_POST['title']) ? trim(strip_tags($_POST['title'])) : null;
+
+        if (!$id || !$url || empty($customCode)) {
+            $actionError = 'Invalid data provided for link edit.';
+        } else {
+            try {
+                // Check if custom code belongs to another link
+                $checkStmt = $pdo->prepare("SELECT id FROM links WHERE short_code = ? AND id != ?");
+                $checkStmt->execute([$customCode, $id]);
+                if ($checkStmt->rowCount() > 0) {
+                    $actionError = 'The short code "/' . htmlspecialchars($customCode) . '" is already in use by another link.';
+                } else {
+                    $updateStmt = $pdo->prepare("UPDATE links SET short_code = ?, original_url = ?, title = ? WHERE id = ?");
+                    $updateStmt->execute([$customCode, $url, $title, $id]);
+                    header("Location: index.php?updated=1");
+                    exit;
+                }
+            } catch (PDOException $e) {
+                $actionError = 'Database error while saving changes.';
+            }
+        }
     }
 }
 
 $linksData = [];
 if ($isLoggedIn) {
     try {
-        $stmt = $pdo->query("SELECT id, short_code, original_url, clicks, created_at FROM links ORDER BY created_at DESC LIMIT 100");
+        $stmt = $pdo->query("SELECT id, short_code, original_url, title, clicks, created_at FROM links ORDER BY created_at DESC LIMIT 100");
         $linksData = $stmt->fetchAll();
     } catch (PDOException $e) {
         $linksData = [];
@@ -46,7 +80,7 @@ if ($isLoggedIn) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PKNSTAN Link Shortener</title>
-    <meta name="description" content="Official link shortener and QR manager for s.pknstan.my.id">
+    <meta name="description" content="Official link shortener and QR manager for s.pknstan.id">
     
     <!-- Google Fonts: Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -184,7 +218,7 @@ if ($isLoggedIn) {
         /* Layout Container */
         .app-layout {
             width: 100%;
-            max-width: <?php echo $isLoggedIn ? '880px' : '480px'; ?>;
+            max-width: <?php echo $isLoggedIn ? '920px' : '480px'; ?>;
             display: flex;
             flex-direction: column;
             gap: 1.5rem;
@@ -377,7 +411,7 @@ if ($isLoggedIn) {
 
         @media (min-width: 640px) {
             .form-row.two-col {
-                grid-template-columns: 1fr 180px;
+                grid-template-columns: 1fr 1fr;
             }
         }
 
@@ -484,7 +518,7 @@ if ($isLoggedIn) {
             border-radius: var(--radius-md);
             font-size: 0.875rem;
             line-height: 1.4;
-            margin-top: 1rem;
+            margin-bottom: 1rem;
         }
 
         .alert-error {
@@ -582,7 +616,7 @@ if ($isLoggedIn) {
 
         /* Table & Inventory Section */
         .inventory-section {
-            margin-top: 1rem;
+            margin-top: 1.5rem;
         }
 
         .inventory-header {
@@ -651,8 +685,22 @@ if ($isLoggedIn) {
             background: var(--bg-surface-muted);
         }
 
+        .link-info-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+            max-width: 320px;
+        }
+
+        .link-title-text {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            line-height: 1.3;
+        }
+
         .col-url {
-            max-width: 260px;
+            max-width: 320px;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -734,7 +782,7 @@ if ($isLoggedIn) {
             background: var(--bg-surface);
             border: 1px solid var(--border-subtle);
             border-radius: var(--radius-lg);
-            max-width: 400px;
+            max-width: 440px;
             width: 100%;
             padding: 1.5rem;
             box-shadow: var(--shadow-modal);
@@ -743,13 +791,16 @@ if ($isLoggedIn) {
             transition: transform 0.2s ease;
             display: flex;
             flex-direction: column;
-            align-items: center;
             gap: 1rem;
-            text-align: center;
         }
 
         .modal-backdrop.is-open .modal-dialog {
             transform: scale(1);
+        }
+
+        .modal-dialog.centered {
+            align-items: center;
+            text-align: center;
         }
 
         .modal-close-btn {
@@ -795,6 +846,7 @@ if ($isLoggedIn) {
             display: flex;
             gap: 0.5rem;
             width: 100%;
+            margin-top: 0.5rem;
         }
 
         .modal-actions-row > * {
@@ -836,7 +888,7 @@ if ($isLoggedIn) {
                     <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
                 </div>
                 <div>
-                    <div class="brand-title">s.pknstan.my.id</div>
+                    <div class="brand-title">s.pknstan.id</div>
                     <div class="brand-badge">Link Shortener</div>
                 </div>
             </a>
@@ -905,8 +957,22 @@ if ($isLoggedIn) {
             <!-- Authenticated Shortener View -->
             <div class="card-header">
                 <h1 class="card-title">Create Short Link</h1>
-                <p class="card-desc">Generate a concise link and QR code for any URL.</p>
+                <p class="card-desc">Generate a concise link, title, and QR code for any URL.</p>
             </div>
+
+            <?php if ($actionMessage): ?>
+            <div class="alert-box alert-success" role="alert">
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                <span><?php echo htmlspecialchars($actionMessage); ?></span>
+            </div>
+            <?php endif; ?>
+
+            <?php if ($actionError): ?>
+            <div class="alert-box alert-error" role="alert">
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <span><?php echo htmlspecialchars($actionError); ?></span>
+            </div>
+            <?php endif; ?>
 
             <!-- Creation Form -->
             <form id="shortener-form" class="form-stack">
@@ -922,22 +988,30 @@ if ($isLoggedIn) {
 
                 <div class="form-row two-col">
                     <div class="form-field">
+                        <label class="form-label" for="link-title">Title / Description (Optional)</label>
+                        <div class="input-group">
+                            <span class="input-icon-left" aria-hidden="true">
+                                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h7"/></svg>
+                            </span>
+                            <input type="text" id="link-title" class="input-text" placeholder="e.g. STAN Registration Guide" autocomplete="off">
+                        </div>
+                    </div>
+
+                    <div class="form-field">
                         <label class="form-label" for="custom-code">Custom Alias (Optional)</label>
                         <div class="input-group">
                             <span class="input-icon-left" aria-hidden="true">
                                 <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"/></svg>
                             </span>
-                            <input type="text" id="custom-code" class="input-text" placeholder="e.g. webinar-2026" autocomplete="off">
+                            <input type="text" id="custom-code" class="input-text" placeholder="e.g. stan-reg" autocomplete="off">
                         </div>
                     </div>
-
-                    <div class="form-field" style="justify-content: flex-end;">
-                        <button type="submit" id="submit-btn" class="btn-primary" style="width: 100%;">
-                            <span id="btn-text">Shorten Link</span>
-                            <div class="spinner" id="btn-spinner" style="display: none;" aria-hidden="true"></div>
-                        </button>
-                    </div>
                 </div>
+
+                <button type="submit" id="submit-btn" class="btn-primary" style="margin-top: 0.25rem;">
+                    <span id="btn-text">Shorten Link</span>
+                    <div class="spinner" id="btn-spinner" style="display: none;" aria-hidden="true"></div>
+                </button>
             </form>
 
             <!-- Error Banner -->
@@ -956,7 +1030,7 @@ if ($isLoggedIn) {
                 </div>
 
                 <div class="short-url-card">
-                    <a href="#" target="_blank" class="short-url-link" id="short-url-display" rel="noopener noreferrer">s.pknstan.my.id/...</a>
+                    <a href="#" target="_blank" class="short-url-link" id="short-url-display" rel="noopener noreferrer">s.pknstan.id/...</a>
                     <div class="btn-group">
                         <button type="button" class="btn-secondary" id="copy-btn" title="Copy shortened URL">
                             <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
@@ -993,7 +1067,7 @@ if ($isLoggedIn) {
                         <thead>
                             <tr>
                                 <th scope="col">Short Link</th>
-                                <th scope="col">Original Destination</th>
+                                <th scope="col">Title & Destination</th>
                                 <th scope="col" style="text-align: center;">Clicks</th>
                                 <th scope="col">Created Date</th>
                                 <th scope="col" style="text-align: right;">Actions</th>
@@ -1017,6 +1091,7 @@ if ($isLoggedIn) {
                                     $shortUrl = BASE_URL . htmlspecialchars($link['short_code']);
                                     $code = htmlspecialchars($link['short_code']);
                                     $originalUrl = htmlspecialchars($link['original_url']);
+                                    $titleText = !empty($link['title']) ? htmlspecialchars($link['title']) : '';
                                 ?>
                                 <tr>
                                     <td>
@@ -1025,9 +1100,14 @@ if ($isLoggedIn) {
                                         </a>
                                     </td>
                                     <td>
-                                        <span class="col-url" title="<?php echo $originalUrl; ?>">
-                                            <?php echo $originalUrl; ?>
-                                        </span>
+                                        <div class="link-info-stack">
+                                            <?php if ($titleText): ?>
+                                                <span class="link-title-text"><?php echo $titleText; ?></span>
+                                            <?php endif; ?>
+                                            <span class="col-url" title="<?php echo $originalUrl; ?>">
+                                                <?php echo $originalUrl; ?>
+                                            </span>
+                                        </div>
                                     </td>
                                     <td class="col-clicks">
                                         <?php echo (int)$link['clicks']; ?>
@@ -1046,6 +1126,17 @@ if ($isLoggedIn) {
                                             >
                                                 <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4h4v4H4V4zm12 0h4v4h-4V4zM4 16h4v4H4v-4z"/></svg>
                                                 <span>QR</span>
+                                            </button>
+
+                                            <button
+                                                type="button"
+                                                class="btn-secondary"
+                                                style="height: 32px; padding: 0 0.5rem; font-size: 0.75rem;"
+                                                onclick="openEditModal(<?php echo (int)$link['id']; ?>, '<?php echo addslashes($code); ?>', '<?php echo addslashes($originalUrl); ?>', '<?php echo addslashes($titleText); ?>')"
+                                                title="Edit link details"
+                                            >
+                                                <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                                                <span>Edit</span>
                                             </button>
                                             
                                             <form method="POST" action="index.php" onsubmit="return confirm('Are you sure you want to delete /<?php echo $code; ?>?');" style="margin: 0;">
@@ -1068,13 +1159,13 @@ if ($isLoggedIn) {
         </main>
 
         <footer class="app-footer">
-            <p>&copy; <?php echo date("Y"); ?> Muhammad Yoga Prabowo &bull; s.pknstan.my.id</p>
+            <p>&copy; <?php echo date("Y"); ?> Muhammad Yoga Prabowo &bull; s.pknstan.id</p>
         </footer>
     </div>
 
     <!-- QR Code Modal Dialog -->
     <div class="modal-backdrop" id="qr-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="qr-modal-title" tabindex="-1">
-        <div class="modal-dialog">
+        <div class="modal-dialog centered">
             <button type="button" class="modal-close-btn" id="qr-modal-close-btn" aria-label="Close QR Code dialog">
                 <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
@@ -1094,6 +1185,46 @@ if ($isLoggedIn) {
                     <span id="qr-modal-copy-text">Copy URL</span>
                 </button>
             </div>
+        </div>
+    </div>
+
+    <!-- Edit Link Modal Dialog -->
+    <div class="modal-backdrop" id="edit-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="edit-modal-title" tabindex="-1">
+        <div class="modal-dialog">
+            <button type="button" class="modal-close-btn" id="edit-modal-close-btn" aria-label="Close edit dialog">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+            
+            <h2 class="modal-title" id="edit-modal-title" style="text-align: left;">Edit Short Link</h2>
+            
+            <form method="POST" action="index.php" class="form-stack">
+                <input type="hidden" name="action" value="edit">
+                <input type="hidden" name="id" id="edit-modal-id">
+                
+                <div class="form-field">
+                    <label class="form-label" for="edit-modal-title-input">Title / Description</label>
+                    <input type="text" name="title" id="edit-modal-title-input" class="input-text no-icon" placeholder="e.g. STAN Registration Guide">
+                </div>
+
+                <div class="form-field">
+                    <label class="form-label" for="edit-modal-code-input">Short Alias <span style="color: var(--danger);">*</span></label>
+                    <input type="text" name="short_code" id="edit-modal-code-input" class="input-text no-icon" required placeholder="e.g. stan-reg">
+                </div>
+
+                <div class="form-field">
+                    <label class="form-label" for="edit-modal-url-input">Destination URL <span style="color: var(--danger);">*</span></label>
+                    <input type="url" name="original_url" id="edit-modal-url-input" class="input-text no-icon" required placeholder="https://example.com/long-url">
+                </div>
+
+                <div class="modal-actions-row">
+                    <button type="submit" class="btn-primary">
+                        <span>Save Changes</span>
+                    </button>
+                    <button type="button" class="btn-secondary" id="edit-modal-cancel-btn">
+                        <span>Cancel</span>
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -1192,6 +1323,7 @@ if ($isLoggedIn) {
         e.preventDefault();
 
         const urlInput = document.getElementById('long-url').value.trim();
+        const titleInput = document.getElementById('link-title').value.trim();
         const customCodeInput = document.getElementById('custom-code').value.trim();
 
         resultContainer.style.display = 'none';
@@ -1209,7 +1341,7 @@ if ($isLoggedIn) {
                     'Content-Type': 'application/json',
                     'X-API-Key': '<?php echo API_KEY; ?>'
                 },
-                body: JSON.stringify({ url: urlInput, custom_code: customCodeInput })
+                body: JSON.stringify({ url: urlInput, title: titleInput, custom_code: customCodeInput })
             });
 
             const data = await response.json();
@@ -1222,6 +1354,11 @@ if ($isLoggedIn) {
                 // Render Inline QR Preview
                 QRManager.generate('inline-qr-canvas', data.short_url, 150);
                 inlineQrWrap.style.display = 'flex';
+                
+                // Clear input fields for next creation
+                document.getElementById('long-url').value = '';
+                document.getElementById('link-title').value = '';
+                document.getElementById('custom-code').value = '';
             } else {
                 throw new Error(data.error || 'Failed to shorten URL. Please check input values.');
             }
@@ -1278,26 +1415,26 @@ if ($isLoggedIn) {
     /* =====================================================
        QR Modal Dialog Controller
     ===================================================== */
-    const modalBackdrop = document.getElementById('qr-modal-backdrop');
-    const modalCloseBtn = document.getElementById('qr-modal-close-btn');
-    const modalUrlText = document.getElementById('qr-modal-url-text');
-    const modalDownloadBtn = document.getElementById('qr-modal-download-btn');
-    const modalCopyBtn = document.getElementById('qr-modal-copy-btn');
-    const modalCopyText = document.getElementById('qr-modal-copy-text');
+    const qrModalBackdrop = document.getElementById('qr-modal-backdrop');
+    const qrModalCloseBtn = document.getElementById('qr-modal-close-btn');
+    const qrModalUrlText = document.getElementById('qr-modal-url-text');
+    const qrModalDownloadBtn = document.getElementById('qr-modal-download-btn');
+    const qrModalCopyBtn = document.getElementById('qr-modal-copy-btn');
+    const qrModalCopyText = document.getElementById('qr-modal-copy-text');
 
     let currentModalUrl = '';
 
     function openQRModal(fullUrl, code) {
         currentModalUrl = fullUrl;
-        modalUrlText.textContent = fullUrl;
+        qrModalUrlText.textContent = fullUrl;
         QRManager.generate('qr-modal-canvas', fullUrl, 200);
-        modalBackdrop.classList.add('is-open');
+        qrModalBackdrop.classList.add('is-open');
         document.body.style.overflow = 'hidden';
-        modalCloseBtn.focus();
+        qrModalCloseBtn.focus();
     }
 
     function closeQRModal() {
-        modalBackdrop.classList.remove('is-open');
+        qrModalBackdrop.classList.remove('is-open');
         document.body.style.overflow = '';
         setTimeout(() => {
             const canvasContainer = document.getElementById('qr-modal-canvas');
@@ -1305,27 +1442,67 @@ if ($isLoggedIn) {
         }, 200);
     }
 
-    modalCloseBtn.addEventListener('click', closeQRModal);
-    modalBackdrop.addEventListener('click', (e) => {
-        if (e.target === modalBackdrop) closeQRModal();
+    qrModalCloseBtn.addEventListener('click', closeQRModal);
+    qrModalBackdrop.addEventListener('click', (e) => {
+        if (e.target === qrModalBackdrop) closeQRModal();
     });
 
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && modalBackdrop.classList.contains('is-open')) {
-            closeQRModal();
-        }
-    });
-
-    modalDownloadBtn.addEventListener('click', () => {
+    qrModalDownloadBtn.addEventListener('click', () => {
         const filename = 'qr-' + currentModalUrl.replace(/https?:\/\//, '').replace(/[\/\s]/g, '-') + '.png';
         QRManager.download('qr-modal-canvas', filename);
     });
 
-    modalCopyBtn.addEventListener('click', () => {
+    qrModalCopyBtn.addEventListener('click', () => {
         navigator.clipboard.writeText(currentModalUrl).then(() => {
-            modalCopyText.textContent = 'Copied!';
-            setTimeout(() => { modalCopyText.textContent = 'Copy URL'; }, 2000);
+            qrModalCopyText.textContent = 'Copied!';
+            setTimeout(() => { qrModalCopyText.textContent = 'Copy URL'; }, 2000);
         });
+    });
+
+    /* =====================================================
+       Edit Modal Dialog Controller
+    ===================================================== */
+    const editModalBackdrop = document.getElementById('edit-modal-backdrop');
+    const editModalCloseBtn = document.getElementById('edit-modal-close-btn');
+    const editModalCancelBtn = document.getElementById('edit-modal-cancel-btn');
+    const editModalIdInput = document.getElementById('edit-modal-id');
+    const editModalCodeInput = document.getElementById('edit-modal-code-input');
+    const editModalUrlInput = document.getElementById('edit-modal-url-input');
+    const editModalTitleInput = document.getElementById('edit-modal-title-input');
+
+    function openEditModal(id, code, url, title) {
+        editModalIdInput.value = id;
+        editModalCodeInput.value = code;
+        editModalUrlInput.value = url;
+        editModalTitleInput.value = title || '';
+        editModalBackdrop.classList.add('is-open');
+        document.body.style.overflow = 'hidden';
+        editModalTitleInput.focus();
+    }
+
+    function closeEditModal() {
+        editModalBackdrop.classList.remove('is-open');
+        document.body.style.overflow = '';
+    }
+
+    editModalCloseBtn.addEventListener('click', closeEditModal);
+    editModalCancelBtn.addEventListener('click', closeEditModal);
+    editModalBackdrop.addEventListener('click', (e) => {
+        if (e.target === editModalBackdrop) closeEditModal();
+    });
+
+    /* =====================================================
+       Global Keyboard Listeners
+    ===================================================== */
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            if (qrModalBackdrop && qrModalBackdrop.classList.contains('is-open')) {
+                closeQRModal();
+            }
+            if (editModalBackdrop && editModalBackdrop.classList.contains('is-open')) {
+                closeEditModal();
+            }
+        }
     });
     <?php endif; ?>
     </script>

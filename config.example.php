@@ -1,17 +1,15 @@
 <?php
 // config.example.php
-// Rename this file to config.php and fill in your actual credentials
-
 // Database Configuration
 define('DB_FILE', __DIR__ . '/database.sqlite');
 
 // Base URL for the shortened links (must include trailing slash)
-define('BASE_URL', 'https://s.domain.com/');
+define('BASE_URL', 'https://s.pknstan.id/');
 
 // Authentication Credentials
 define('ADMIN_USER', 'admin');
-define('ADMIN_PASS', 'your_password'); // Replace with a stronger password
-define('API_KEY', 'your_secret_api_key'); // Replace with a hard-to-guess API Key
+define('ADMIN_PASS', 'your_secure_password_here');
+define('API_KEY', 'your_secure_api_key_here');
 
 // Establish Database Connection
 try {
@@ -24,9 +22,16 @@ try {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         short_code TEXT NOT NULL UNIQUE,
         original_url TEXT NOT NULL,
+        title TEXT DEFAULT NULL,
         clicks INTEGER DEFAULT 0,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )");
+
+    // Safe migration: check if title column exists in existing SQLite databases
+    $cols = $pdo->query("PRAGMA table_info(links)")->fetchAll(PDO::FETCH_COLUMN, 1);
+    if (!in_array('title', $cols, true)) {
+        $pdo->exec("ALTER TABLE links ADD COLUMN title TEXT DEFAULT NULL");
+    }
 } catch (PDOException $e) {
     die("Database connection failed: " . $e->getMessage());
 }

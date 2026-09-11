@@ -15,21 +15,25 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $headers = function_exists('getallheaders') ? getallheaders() : [];
 $apiKeyHeader = $headers['X-API-Key'] ?? $headers['x-api-key'] ?? $_SERVER['HTTP_X_API_KEY'] ?? null;
 
-// Get the URL and possibly api_key from POST data (supports both JSON and form data)
+// Get the URL, custom_code, and title from POST data (supports both JSON and form data)
 $inputJSON = file_get_contents('php://input');
 $input = json_decode($inputJSON, true);
 
 $url = null;
 $providedApiKey = null;
+$customCode = null;
+$title = null;
 
 if (isset($input['url'])) {
     $url = $input['url'];
     $providedApiKey = $input['api_key'] ?? null;
     $customCode = $input['custom_code'] ?? null;
+    $title = $input['title'] ?? null;
 } elseif (isset($_POST['url'])) {
     $url = $_POST['url'];
     $providedApiKey = $_POST['api_key'] ?? null;
     $customCode = $_POST['custom_code'] ?? null;
+    $title = $_POST['title'] ?? null;
 }
 
 // Check API Key (Header takes precedence over body)
@@ -46,6 +50,8 @@ if (!$url || !filter_var($url, FILTER_VALIDATE_URL)) {
     echo json_encode(['error' => 'Invalid or missing URL provided.']);
     exit;
 }
+
+$sanitizedTitle = !empty($title) ? trim(strip_tags($title)) : null;
 
 try {
     // Check if custom code is provided
@@ -64,15 +70,15 @@ try {
         
         $shortCode = $customCode;
         // Insert into database
-        $stmt = $pdo->prepare("INSERT INTO links (short_code, original_url) VALUES (?, ?)");
-        $stmt->execute([$shortCode, $url]);
+        $stmt = $pdo->prepare("INSERT INTO links (short_code, original_url, title) VALUES (?, ?, ?)");
+        $stmt->execute([$shortCode, $url, $sanitizedTitle]);
     } else {
-        // Check if the URL already exists to prevent duplicates (optional but good practice)
+        // Check if the URL already exists with matching title to prevent unnecessary duplicate entries
         $stmt = $pdo->prepare("SELECT short_code FROM links WHERE original_url = ? LIMIT 1");
         $stmt->execute([$url]);
         $existing = $stmt->fetch();
     
-        if ($existing) {
+        if ($existing && empty($sanitizedTitle)) {
             $shortCode = $existing['short_code'];
         } else {
             // Generate a unique short code
@@ -90,8 +96,8 @@ try {
             }
     
             // Insert into database
-            $stmt = $pdo->prepare("INSERT INTO links (short_code, original_url) VALUES (?, ?)");
-            $stmt->execute([$shortCode, $url]);
+            $stmt = $pdo->prepare("INSERT INTO links (short_code, original_url, title) VALUES (?, ?, ?)");
+            $stmt->execute([$shortCode, $url, $sanitizedTitle]);
         }
     }
 
@@ -99,6 +105,7 @@ try {
 
     echo json_encode([
         'success' => true,
+        'title' => $sanitizedTitle,
         'original_url' => $url,
         'short_code' => $shortCode,
         'short_url' => $shortUrl
