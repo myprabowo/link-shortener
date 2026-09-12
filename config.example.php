@@ -32,6 +32,37 @@ try {
     if (!in_array('title', $cols, true)) {
         $pdo->exec("ALTER TABLE links ADD COLUMN title TEXT DEFAULT NULL");
     }
+
+    // Automatically create link_trees table if it doesn't exist
+    $pdo->exec("CREATE TABLE IF NOT EXISTS link_trees (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        slug TEXT NOT NULL UNIQUE,
+        title TEXT NOT NULL,
+        bio TEXT DEFAULT NULL,
+        avatar_type TEXT DEFAULT 'initials',
+        avatar_value TEXT DEFAULT NULL,
+        instagram_url TEXT DEFAULT NULL,
+        youtube_url TEXT DEFAULT NULL,
+        telegram_url TEXT DEFAULT NULL,
+        website_url TEXT DEFAULT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )");
+
+    // Automatically create link_tree_items table if it doesn't exist
+    $pdo->exec("CREATE TABLE IF NOT EXISTS link_tree_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        tree_id INTEGER NOT NULL,
+        title TEXT NOT NULL,
+        subtitle TEXT DEFAULT NULL,
+        url TEXT NOT NULL,
+        icon TEXT DEFAULT 'link',
+        badge TEXT DEFAULT NULL,
+        sort_order INTEGER DEFAULT 0,
+        is_active INTEGER DEFAULT 1,
+        clicks INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (tree_id) REFERENCES link_trees (id) ON DELETE CASCADE
+    )");
 } catch (PDOException $e) {
     die("Database connection failed: " . $e->getMessage());
 }

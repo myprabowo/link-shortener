@@ -10,6 +10,7 @@ This application provides an interactive web interface for administration and an
 4. **API Endpoint (`api.php`)**: Allows programmatic URL shortening with required title/description, destination URL, and optional custom alias.
 5. **URL Rewriting**: Automatic routing from `s.pknstan.id/xyz` to destination URLs via `.htaccess` or Nginx rewrite rules.
 6. **Click Tracking**: Tracks total clicks per short link.
+7. **Bio Link / Linktree (`tree.php` / `/tree`)**: Dedicated mobile-first bio-link profile page for social media (Instagram, TikTok, WhatsApp), featuring real click counters, QR code generator, and direct administration for adding custom links or importing directly from shortened links.
 
 ---
 

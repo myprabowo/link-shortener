@@ -3,5 +3,10 @@ RewriteEngine On
 # If the request is for the main domain or index/api, don't rewrite
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
+# Linktree routes
+RewriteRule ^tree/?$ tree.php [L,QSA]
+RewriteRule ^tree/([a-zA-Z0-9_-]+)/?$ tree.php?slug=$1 [L,QSA]
+RewriteRule ^t/([a-zA-Z0-9_-]+)/?$ tree.php?slug=$1 [L,QSA]
+
 # Only match alphanumeric shortcodes
 RewriteRule ^([a-zA-Z0-9]+)$ redirect.php?code=$1 [L,QSA]

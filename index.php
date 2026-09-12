@@ -2,6 +2,7 @@
 // index.php
 session_start();
 require_once 'config.php';
+require_once 'lang.php';
 
 // Handle Login
 $loginError = '';
@@ -14,7 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         header("Location: index.php");
         exit;
     } else {
-        $loginError = 'Incorrect username or password. Please try again.';
+        $loginError = __t('login_error');
     }
 }
 
@@ -24,7 +25,7 @@ $actionMessage = '';
 $actionError = '';
 
 if (isset($_GET['updated'])) {
-    $actionMessage = 'Link updated successfully.';
+    $actionMessage = __t('link_updated');
 }
 
 // Handle Delete & Edit Actions
@@ -43,14 +44,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $isLogge
         $title = !empty($_POST['title']) ? trim(strip_tags($_POST['title'])) : null;
 
         if (!$id || !$url || empty($customCode) || empty($title)) {
-            $actionError = 'Invalid data provided for link edit. Title, short code, and destination URL are required.';
+            $actionError = __t('invalid_data_edit');
         } else {
             try {
                 // Check if custom code belongs to another link
                 $checkStmt = $pdo->prepare("SELECT id FROM links WHERE short_code = ? AND id != ?");
                 $checkStmt->execute([$customCode, $id]);
                 if ($checkStmt->rowCount() > 0) {
-                    $actionError = 'The short code "/' . htmlspecialchars($customCode) . '" is already in use by another link.';
+                    $actionError = __t('code_in_use', ['code' => htmlspecialchars($customCode)]);
                 } else {
                     $updateStmt = $pdo->prepare("UPDATE links SET short_code = ?, original_url = ?, title = ? WHERE id = ?");
                     $updateStmt->execute([$customCode, $url, $title, $id]);
@@ -58,7 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $isLogge
                     exit;
                 }
             } catch (PDOException $e) {
-                $actionError = 'Database error while saving changes.';
+                $actionError = __t('db_error');
             }
         }
     }
@@ -75,11 +76,11 @@ if ($isLoggedIn) {
 }
 ?>
 <!DOCTYPE html>
-<html lang="id" data-theme="dark">
+<html lang="<?php echo htmlspecialchars($currentLang); ?>" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PKNSTAN Link Shortener</title>
+    <title><?php echo htmlspecialchars(__t('brand_title')); ?> | <?php echo htmlspecialchars(__t('brand_badge')); ?></title>
     <meta name="description" content="Official link shortener and QR manager for s.pknstan.id">
     
     <!-- Google Fonts: Inter -->
@@ -201,6 +202,8 @@ if ($isLoggedIn) {
             background-color: var(--bg-page);
             color: var(--text-primary);
             line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
@@ -218,19 +221,24 @@ if ($isLoggedIn) {
         /* Layout Container */
         .app-layout {
             width: 100%;
-            max-width: <?php echo $isLoggedIn ? '920px' : '480px'; ?>;
+            max-width: 1120px;
             display: flex;
             flex-direction: column;
             gap: 1.5rem;
-            margin: auto 0;
+            margin: 0 auto;
         }
 
-        /* App Header & Brand */
+        .app-layout.login-mode {
+            max-width: 460px;
+            margin: 2.5rem auto;
+        }
+
+        /* Header Component */
         .app-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 0.5rem 0;
+            padding: 0.25rem 0;
         }
 
         .brand-block {
@@ -238,33 +246,33 @@ if ($isLoggedIn) {
             align-items: center;
             gap: 0.75rem;
             text-decoration: none;
-            color: var(--text-primary);
+            color: inherit;
         }
 
         .brand-icon {
             width: 38px;
             height: 38px;
             border-radius: var(--radius-md);
-            background: var(--accent-subtle);
-            border: 1px solid var(--border-subtle);
+            background: var(--accent);
+            color: var(--accent-contrast);
             display: flex;
             align-items: center;
             justify-content: center;
-            color: var(--accent);
-            flex-shrink: 0;
+            box-shadow: var(--shadow-sm);
         }
 
         .brand-title {
             font-size: 1.125rem;
             font-weight: 700;
-            letter-spacing: -0.015em;
+            letter-spacing: -0.02em;
+            color: var(--text-primary);
             line-height: 1.2;
         }
 
         .brand-badge {
             font-size: 0.75rem;
-            color: var(--text-muted);
             font-weight: 500;
+            color: var(--text-muted);
         }
 
         .header-actions {
@@ -273,17 +281,52 @@ if ($isLoggedIn) {
             gap: 0.5rem;
         }
 
-        /* Utility Buttons */
-        .btn-icon {
+        /* Language Switcher */
+        .lang-switcher {
+            display: inline-flex;
+            align-items: center;
+            background: var(--bg-surface-muted);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: 2px;
+            gap: 2px;
+        }
+
+        .lang-btn {
             display: inline-flex;
             align-items: center;
             justify-content: center;
+            min-width: 32px;
+            height: 28px;
+            padding: 0 0.45rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-decoration: none;
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+            transition: all 0.15s ease;
+        }
+
+        .lang-btn:hover {
+            color: var(--text-primary);
+        }
+
+        .lang-btn.active {
+            background: var(--accent);
+            color: var(--accent-contrast);
+        }
+
+        /* Icon Buttons */
+        .btn-icon {
             width: 38px;
             height: 38px;
             border-radius: var(--radius-md);
             background: var(--bg-surface);
             border: 1px solid var(--border-subtle);
             color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
             cursor: pointer;
             transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
         }
@@ -354,7 +397,6 @@ if ($isLoggedIn) {
             display: flex;
             flex-direction: column;
             gap: 0.375rem;
-            text-align: left;
         }
 
         .form-label {
@@ -544,6 +586,7 @@ if ($isLoggedIn) {
             gap: 1rem;
         }
 
+
         .result-header {
             display: flex;
             align-items: center;
@@ -689,7 +732,7 @@ if ($isLoggedIn) {
             display: flex;
             flex-direction: column;
             gap: 0.2rem;
-            max-width: 320px;
+            max-width: 520px;
         }
 
         .link-title-text {
@@ -700,7 +743,7 @@ if ($isLoggedIn) {
         }
 
         .col-url {
-            max-width: 320px;
+            max-width: 520px;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -880,7 +923,7 @@ if ($isLoggedIn) {
 </head>
 <body>
 
-    <div class="app-layout">
+    <div class="app-layout <?php echo !$isLoggedIn ? 'login-mode' : ''; ?>">
         <!-- App Header -->
         <header class="app-header">
             <a href="index.php" class="brand-block" title="PKNSTAN Link Shortener">
@@ -888,22 +931,35 @@ if ($isLoggedIn) {
                     <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
                 </div>
                 <div>
-                    <div class="brand-title">s.pknstan.id</div>
-                    <div class="brand-badge">Link Shortener</div>
+                    <div class="brand-title"><?php echo htmlspecialchars(__t('brand_title')); ?></div>
+                    <div class="brand-badge"><?php echo htmlspecialchars(__t('brand_badge')); ?></div>
                 </div>
             </a>
 
             <div class="header-actions">
+                <!-- Language Switcher -->
+                <div class="lang-switcher" aria-label="<?php echo htmlspecialchars(__t('language')); ?>">
+                    <a href="<?php echo getLangToggleUrl('id'); ?>" class="lang-btn <?php echo $currentLang === 'id' ? 'active' : ''; ?>" title="Bahasa Indonesia">ID</a>
+                    <a href="<?php echo getLangToggleUrl('en'); ?>" class="lang-btn <?php echo $currentLang === 'en' ? 'active' : ''; ?>" title="English">EN</a>
+                </div>
+
+                <?php if ($isLoggedIn): ?>
+                <a href="tree.php?manage=1&tab=trees" class="btn-outline" title="<?php echo htmlspecialchars(__t('linktree_nav')); ?>">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
+                    <span><?php echo htmlspecialchars(__t('linktree_nav')); ?></span>
+                </a>
+                <?php endif; ?>
+
                 <!-- Theme Toggle Button -->
-                <button type="button" class="btn-icon" id="theme-toggle-btn" aria-label="Toggle light or dark theme" title="Toggle theme">
+                <button type="button" class="btn-icon" id="theme-toggle-btn" aria-label="<?php echo htmlspecialchars(__t('theme_toggle')); ?>" title="<?php echo htmlspecialchars(__t('theme_toggle')); ?>">
                     <svg id="theme-icon-moon" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
                     <svg id="theme-icon-sun" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="display: none;"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
                 </button>
 
                 <?php if ($isLoggedIn): ?>
-                <a href="logout.php" class="btn-outline" title="Log out from administration">
+                <a href="logout.php" class="btn-outline" title="<?php echo htmlspecialchars(__t('logout')); ?>">
                     <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
-                    <span>Logout</span>
+                    <span><?php echo htmlspecialchars(__t('logout')); ?></span>
                 </a>
                 <?php endif; ?>
             </div>
@@ -914,8 +970,8 @@ if ($isLoggedIn) {
             <?php if (!$isLoggedIn): ?>
             <!-- Login View -->
             <div class="card-header">
-                <h1 class="card-title">Administrator Login</h1>
-                <p class="card-desc">Sign in to create, manage, and track shortened links.</p>
+                <h1 class="card-title"><?php echo htmlspecialchars(__t('login_title')); ?></h1>
+                <p class="card-desc"><?php echo htmlspecialchars(__t('login_desc')); ?></p>
             </div>
 
             <?php if ($loginError): ?>
@@ -929,35 +985,35 @@ if ($isLoggedIn) {
                 <input type="hidden" name="action" value="login">
                 
                 <div class="form-field">
-                    <label class="form-label" for="username">Username</label>
+                    <label class="form-label" for="username"><?php echo htmlspecialchars(__t('username')); ?></label>
                     <div class="input-group">
                         <span class="input-icon-left" aria-hidden="true">
                             <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
                         </span>
-                        <input type="text" name="username" id="username" class="input-text" placeholder="Enter administrator username" required autocomplete="username">
+                        <input type="text" name="username" id="username" class="input-text" placeholder="<?php echo htmlspecialchars(__t('username_placeholder')); ?>" required autocomplete="username">
                     </div>
                 </div>
 
                 <div class="form-field">
-                    <label class="form-label" for="password">Password</label>
+                    <label class="form-label" for="password"><?php echo htmlspecialchars(__t('password')); ?></label>
                     <div class="input-group">
                         <span class="input-icon-left" aria-hidden="true">
                             <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
                         </span>
-                        <input type="password" name="password" id="password" class="input-text" placeholder="Enter password" required autocomplete="current-password">
+                        <input type="password" name="password" id="password" class="input-text" placeholder="<?php echo htmlspecialchars(__t('password_placeholder')); ?>" required autocomplete="current-password">
                     </div>
                 </div>
 
                 <button type="submit" class="btn-primary" style="margin-top: 0.5rem;">
-                    <span>Sign In</span>
+                    <span><?php echo htmlspecialchars(__t('sign_in')); ?></span>
                 </button>
             </form>
 
             <?php else: ?>
             <!-- Authenticated Shortener View -->
             <div class="card-header">
-                <h1 class="card-title">Create Short Link</h1>
-                <p class="card-desc">Generate a concise link, title, and QR code for any URL.</p>
+                <h1 class="card-title"><?php echo htmlspecialchars(__t('create_title')); ?></h1>
+                <p class="card-desc"><?php echo htmlspecialchars(__t('create_desc')); ?></p>
             </div>
 
             <?php if ($actionMessage): ?>
@@ -977,39 +1033,39 @@ if ($isLoggedIn) {
             <!-- Creation Form -->
             <form id="shortener-form" class="form-stack">
                 <div class="form-field">
-                    <label class="form-label" for="long-url">Destination URL <span style="color: var(--danger);">*</span></label>
+                    <label class="form-label" for="long-url"><?php echo htmlspecialchars(__t('dest_url')); ?> <span style="color: var(--danger);">*</span></label>
                     <div class="input-group">
                         <span class="input-icon-left" aria-hidden="true">
                             <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
                         </span>
-                        <input type="url" id="long-url" class="input-text" placeholder="https://example.com/very-long-path" required autocomplete="off">
+                        <input type="url" id="long-url" class="input-text" placeholder="<?php echo htmlspecialchars(__t('dest_placeholder')); ?>" required autocomplete="off">
                     </div>
                 </div>
 
                 <div class="form-row two-col">
                     <div class="form-field">
-                        <label class="form-label" for="link-title">Title / Description <span style="color: var(--danger);">*</span></label>
+                        <label class="form-label" for="link-title"><?php echo htmlspecialchars(__t('title_desc')); ?> <span style="color: var(--danger);">*</span></label>
                         <div class="input-group">
                             <span class="input-icon-left" aria-hidden="true">
                                 <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h7"/></svg>
                             </span>
-                            <input type="text" id="link-title" class="input-text" placeholder="e.g. STAN Registration Guide" required autocomplete="off">
+                            <input type="text" id="link-title" class="input-text" placeholder="<?php echo htmlspecialchars(__t('title_placeholder')); ?>" required autocomplete="off">
                         </div>
                     </div>
 
                     <div class="form-field">
-                        <label class="form-label" for="custom-code">Custom Alias (Optional)</label>
+                        <label class="form-label" for="custom-code"><?php echo htmlspecialchars(__t('custom_alias')); ?></label>
                         <div class="input-group">
                             <span class="input-icon-left" aria-hidden="true">
                                 <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"/></svg>
                             </span>
-                            <input type="text" id="custom-code" class="input-text" placeholder="e.g. stan-reg" autocomplete="off">
+                            <input type="text" id="custom-code" class="input-text" placeholder="<?php echo htmlspecialchars(__t('custom_alias_placeholder')); ?>" autocomplete="off">
                         </div>
                     </div>
                 </div>
 
                 <button type="submit" id="submit-btn" class="btn-primary" style="margin-top: 0.25rem;">
-                    <span id="btn-text">Shorten Link</span>
+                    <span id="btn-text"><?php echo htmlspecialchars(__t('shorten_btn')); ?></span>
                     <div class="spinner" id="btn-spinner" style="display: none;" aria-hidden="true"></div>
                 </button>
             </form>
@@ -1025,20 +1081,20 @@ if ($isLoggedIn) {
                 <div class="result-header">
                     <span class="result-title">
                         <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-                        Link created successfully
+                        <?php echo htmlspecialchars(__t('link_created')); ?>
                     </span>
                 </div>
 
                 <div class="short-url-card">
                     <a href="#" target="_blank" class="short-url-link" id="short-url-display" rel="noopener noreferrer">s.pknstan.id/...</a>
                     <div class="btn-group">
-                        <button type="button" class="btn-secondary" id="copy-btn" title="Copy shortened URL">
+                        <button type="button" class="btn-secondary" id="copy-btn" title="<?php echo htmlspecialchars(__t('copy')); ?>">
                             <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-                            <span id="copy-btn-text">Copy</span>
+                            <span id="copy-btn-text"><?php echo htmlspecialchars(__t('copy')); ?></span>
                         </button>
                         <button type="button" class="btn-secondary" id="result-qr-toggle-btn" title="Toggle QR Code preview">
                             <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4h4v4H4V4zm12 0h4v4h-4V4zM4 16h4v4H4v-4z"/></svg>
-                            <span>QR Code</span>
+                            <span><?php echo htmlspecialchars(__t('qr_code')); ?></span>
                         </button>
                     </div>
                 </div>
@@ -1048,7 +1104,7 @@ if ($isLoggedIn) {
                     <div class="qr-canvas-box" id="inline-qr-canvas"></div>
                     <button type="button" class="btn-secondary" id="inline-qr-download-btn">
                         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-                        <span>Download QR (PNG)</span>
+                        <span><?php echo htmlspecialchars(__t('download_qr')); ?></span>
                     </button>
                 </div>
             </div>
@@ -1057,7 +1113,7 @@ if ($isLoggedIn) {
             <section class="inventory-section">
                 <div class="inventory-header">
                     <h2 class="inventory-title">
-                        <span>Recent Links</span>
+                        <span><?php echo htmlspecialchars(__t('recent_links')); ?></span>
                         <span class="count-badge"><?php echo count($linksData); ?></span>
                     </h2>
                 </div>
@@ -1066,11 +1122,11 @@ if ($isLoggedIn) {
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th scope="col">Short Link</th>
-                                <th scope="col">Title & Destination</th>
-                                <th scope="col" style="text-align: center;">Clicks</th>
-                                <th scope="col">Created Date</th>
-                                <th scope="col" style="text-align: right;">Actions</th>
+                                <th scope="col"><?php echo htmlspecialchars(__t('col_short')); ?></th>
+                                <th scope="col"><?php echo htmlspecialchars(__t('col_title_dest')); ?></th>
+                                <th scope="col" style="text-align: center;"><?php echo htmlspecialchars(__t('col_clicks')); ?></th>
+                                <th scope="col"><?php echo htmlspecialchars(__t('col_date')); ?></th>
+                                <th scope="col" style="text-align: right;"><?php echo htmlspecialchars(__t('col_actions')); ?></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1081,8 +1137,8 @@ if ($isLoggedIn) {
                                         <div class="empty-state-icon" aria-hidden="true">
                                             <svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
                                         </div>
-                                        <div class="empty-state-title">No shortened links yet</div>
-                                        <div class="empty-state-desc">Enter a destination URL above to generate your first link and QR code.</div>
+                                        <div class="empty-state-title"><?php echo htmlspecialchars(__t('empty_links')); ?></div>
+                                        <div class="empty-state-desc"><?php echo htmlspecialchars(__t('empty_links_desc')); ?></div>
                                     </div>
                                 </td>
                             </tr>
@@ -1122,7 +1178,7 @@ if ($isLoggedIn) {
                                                 class="btn-secondary"
                                                 style="height: 32px; padding: 0 0.5rem; font-size: 0.75rem;"
                                                 onclick="openQRModal('<?php echo $shortUrl; ?>', '<?php echo $code; ?>')"
-                                                title="View and download QR code"
+                                                title="<?php echo htmlspecialchars(__t('qr_code')); ?>"
                                             >
                                                 <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4h4v4H4V4zm12 0h4v4h-4V4zM4 16h4v4H4v-4z"/></svg>
                                                 <span>QR</span>
@@ -1133,17 +1189,17 @@ if ($isLoggedIn) {
                                                 class="btn-secondary"
                                                 style="height: 32px; padding: 0 0.5rem; font-size: 0.75rem;"
                                                 onclick="openEditModal(<?php echo (int)$link['id']; ?>, '<?php echo addslashes($code); ?>', '<?php echo addslashes($originalUrl); ?>', '<?php echo addslashes($titleText); ?>')"
-                                                title="Edit link details"
+                                                title="<?php echo htmlspecialchars(__t('edit')); ?>"
                                             >
                                                 <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
-                                                <span>Edit</span>
+                                                <span><?php echo htmlspecialchars(__t('edit')); ?></span>
                                             </button>
                                             
-                                            <form method="POST" action="index.php" onsubmit="return confirm('Are you sure you want to delete /<?php echo $code; ?>?');" style="margin: 0;">
+                                            <form method="POST" action="index.php" onsubmit="return confirm('<?php echo addslashes(__t('confirm_delete')); ?>');" style="margin: 0;">
                                                 <input type="hidden" name="action" value="delete">
                                                 <input type="hidden" name="id" value="<?php echo $link['id']; ?>">
-                                                <button type="submit" class="btn-danger-ghost" title="Delete short link">
-                                                    Delete
+                                                <button type="submit" class="btn-danger-ghost" title="<?php echo htmlspecialchars(__t('delete')); ?>">
+                                                    <?php echo htmlspecialchars(__t('delete')); ?>
                                                 </button>
                                             </form>
                                         </div>
@@ -1159,18 +1215,18 @@ if ($isLoggedIn) {
         </main>
 
         <footer class="app-footer">
-            <p>&copy; <?php echo date("Y"); ?> Muhammad Yoga Prabowo &bull; s.pknstan.id</p>
+            <p><?php echo htmlspecialchars(__t('footer_text')); ?></p>
         </footer>
     </div>
 
     <!-- QR Code Modal Dialog -->
     <div class="modal-backdrop" id="qr-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="qr-modal-title" tabindex="-1">
         <div class="modal-dialog centered">
-            <button type="button" class="modal-close-btn" id="qr-modal-close-btn" aria-label="Close QR Code dialog">
+            <button type="button" class="modal-close-btn" id="qr-modal-close-btn" aria-label="<?php echo htmlspecialchars(__t('close')); ?>">
                 <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
             
-            <h2 class="modal-title" id="qr-modal-title">QR Code</h2>
+            <h2 class="modal-title" id="qr-modal-title"><?php echo htmlspecialchars(__t('qr_code')); ?></h2>
             <div class="modal-url-badge" id="qr-modal-url-text"></div>
             
             <div class="qr-canvas-box" id="qr-modal-canvas"></div>
@@ -1178,11 +1234,11 @@ if ($isLoggedIn) {
             <div class="modal-actions-row">
                 <button type="button" class="btn-primary" id="qr-modal-download-btn">
                     <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-                    <span>Download PNG</span>
+                    <span><?php echo htmlspecialchars(__t('download_png')); ?></span>
                 </button>
                 <button type="button" class="btn-secondary" id="qr-modal-copy-btn">
                     <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-                    <span id="qr-modal-copy-text">Copy URL</span>
+                    <span id="qr-modal-copy-text"><?php echo htmlspecialchars(__t('copy_url')); ?></span>
                 </button>
             </div>
         </div>
@@ -1191,37 +1247,37 @@ if ($isLoggedIn) {
     <!-- Edit Link Modal Dialog -->
     <div class="modal-backdrop" id="edit-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="edit-modal-title" tabindex="-1">
         <div class="modal-dialog">
-            <button type="button" class="modal-close-btn" id="edit-modal-close-btn" aria-label="Close edit dialog">
+            <button type="button" class="modal-close-btn" id="edit-modal-close-btn" aria-label="<?php echo htmlspecialchars(__t('close')); ?>">
                 <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
             
-            <h2 class="modal-title" id="edit-modal-title" style="text-align: left;">Edit Short Link</h2>
+            <h2 class="modal-title" id="edit-modal-title" style="text-align: left;"><?php echo htmlspecialchars(__t('edit_link_title')); ?></h2>
             
             <form method="POST" action="index.php" class="form-stack">
                 <input type="hidden" name="action" value="edit">
                 <input type="hidden" name="id" id="edit-modal-id">
                 
                 <div class="form-field">
-                    <label class="form-label" for="edit-modal-title-input">Title / Description <span style="color: var(--danger);">*</span></label>
-                    <input type="text" name="title" id="edit-modal-title-input" class="input-text no-icon" required placeholder="e.g. STAN Registration Guide">
+                    <label class="form-label" for="edit-modal-title-input"><?php echo htmlspecialchars(__t('title_desc')); ?> <span style="color: var(--danger);">*</span></label>
+                    <input type="text" name="title" id="edit-modal-title-input" class="input-text no-icon" required placeholder="<?php echo htmlspecialchars(__t('title_placeholder')); ?>">
                 </div>
 
                 <div class="form-field">
-                    <label class="form-label" for="edit-modal-code-input">Short Alias <span style="color: var(--danger);">*</span></label>
-                    <input type="text" name="short_code" id="edit-modal-code-input" class="input-text no-icon" required placeholder="e.g. stan-reg">
+                    <label class="form-label" for="edit-modal-code-input"><?php echo htmlspecialchars(__t('short_alias')); ?> <span style="color: var(--danger);">*</span></label>
+                    <input type="text" name="short_code" id="edit-modal-code-input" class="input-text no-icon" required placeholder="<?php echo htmlspecialchars(__t('custom_alias_placeholder')); ?>">
                 </div>
 
                 <div class="form-field">
-                    <label class="form-label" for="edit-modal-url-input">Destination URL <span style="color: var(--danger);">*</span></label>
-                    <input type="url" name="original_url" id="edit-modal-url-input" class="input-text no-icon" required placeholder="https://example.com/long-url">
+                    <label class="form-label" for="edit-modal-url-input"><?php echo htmlspecialchars(__t('dest_url')); ?> <span style="color: var(--danger);">*</span></label>
+                    <input type="url" name="original_url" id="edit-modal-url-input" class="input-text no-icon" required placeholder="<?php echo htmlspecialchars(__t('dest_placeholder')); ?>">
                 </div>
 
                 <div class="modal-actions-row">
                     <button type="submit" class="btn-primary">
-                        <span>Save Changes</span>
+                        <span><?php echo htmlspecialchars(__t('save_changes')); ?></span>
                     </button>
                     <button type="button" class="btn-secondary" id="edit-modal-cancel-btn">
-                        <span>Cancel</span>
+                        <span><?php echo htmlspecialchars(__t('cancel')); ?></span>
                     </button>
                 </div>
             </form>
@@ -1381,13 +1437,13 @@ if ($isLoggedIn) {
     copyBtn.addEventListener('click', function() {
         const textToCopy = shortUrlDisplay.textContent;
         navigator.clipboard.writeText(textToCopy).then(() => {
-            copyBtnText.textContent = 'Copied!';
+            copyBtnText.textContent = '<?php echo addslashes(__t('copied')); ?>';
             setTimeout(() => {
-                copyBtnText.textContent = 'Copy';
+                copyBtnText.textContent = '<?php echo addslashes(__t('copy')); ?>';
             }, 2000);
         }).catch(() => {
             copyBtnText.textContent = 'Failed';
-            setTimeout(() => { copyBtnText.textContent = 'Copy'; }, 2000);
+            setTimeout(() => { copyBtnText.textContent = '<?php echo addslashes(__t('copy')); ?>'; }, 2000);
         });
     });
 
@@ -1454,8 +1510,8 @@ if ($isLoggedIn) {
 
     qrModalCopyBtn.addEventListener('click', () => {
         navigator.clipboard.writeText(currentModalUrl).then(() => {
-            qrModalCopyText.textContent = 'Copied!';
-            setTimeout(() => { qrModalCopyText.textContent = 'Copy URL'; }, 2000);
+            qrModalCopyText.textContent = '<?php echo addslashes(__t('copied')); ?>';
+            setTimeout(() => { qrModalCopyText.textContent = '<?php echo addslashes(__t('copy_url')); ?>'; }, 2000);
         });
     });
 
