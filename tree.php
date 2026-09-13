@@ -1579,7 +1579,7 @@ if ($manageMode) {
             <div class="tree-summary-left">
                 <div class="tree-avatar-mini" aria-hidden="true">
                     <?php 
-                        $words = preg_split("/\s+/", $tree['title']);
+                        $words = preg_split("/\s+/", $tree['title'] ?? '');
                         $initials = '';
                         foreach ($words as $w) {
                             if (!empty($w)) $initials .= mb_strtoupper(mb_substr($w, 0, 1));
@@ -1590,7 +1590,7 @@ if ($manageMode) {
                 </div>
                 <div class="tree-meta-group">
                     <h1>
-                        <?php echo htmlspecialchars($tree['title']); ?>
+                        <?php echo htmlspecialchars($tree['title'] ?? ''); ?>
                     </h1>
                     <div class="tree-meta-sub">
                         <a href="<?php echo $publicTreeUrl; ?>" target="_blank" rel="noopener noreferrer" class="tree-slug-pill">
@@ -2132,7 +2132,7 @@ if ($manageMode) {
             <header class="tree-header">
                 <div class="avatar-box" aria-hidden="true">
                     <span><?php 
-                        $words = preg_split("/\s+/", $tree['title']);
+                        $words = preg_split("/\s+/", $tree['title'] ?? '');
                         $initials = '';
                         foreach ($words as $w) {
                             if (!empty($w)) $initials .= mb_strtoupper(mb_substr($w, 0, 1));
