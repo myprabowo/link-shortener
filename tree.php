@@ -1514,7 +1514,7 @@ if ($manageMode) {
         </div>
 
         <!-- Segmented Tab Navigation -->
-        <nav class="navbar-tabs" aria-label="Navigation Tabs">
+        <nav class="navbar-tabs" aria-label="<?php echo htmlspecialchars(__t('nav_tabs')); ?>">
             <a href="tree.php?manage=1&slug=<?php echo urlencode($activeSlug); ?>&tab=links" class="tab-item <?php echo $currentTab === 'links' ? 'active' : ''; ?>">
                 <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
                 <span><?php echo htmlspecialchars(__t('tab_links')); ?></span>
@@ -1792,7 +1792,7 @@ if ($manageMode) {
                 </div>
 
                 <div class="link-card-right">
-                    <span class="pill-badge pill-badge-muted" title="Clicks">
+                    <span class="pill-badge pill-badge-muted" title="<?php echo htmlspecialchars(__t('col_clicks')); ?>">
                         <?php echo htmlspecialchars(__t('clicks_count', ['count' => $iClicks])); ?>
                     </span>
 
@@ -1851,7 +1851,7 @@ if ($manageMode) {
                     <label class="form-label" for="edit-slug"><?php echo htmlspecialchars(__t('custom_slug')); ?> <span style="color: var(--danger);">*</span></label>
                     <div class="input-slug-prefix">
                         <span class="slug-addon"><?php echo BASE_URL; ?>tree/</span>
-                        <input type="text" id="edit-slug" name="slug" class="input-text" value="<?php echo htmlspecialchars($tree['slug'] ?? ''); ?>" required pattern="[a-zA-Z0-9_-]+" title="Gunakan huruf, angka, tanda minus (-), atau underscore (_)">
+                        <input type="text" id="edit-slug" name="slug" class="input-text" value="<?php echo htmlspecialchars($tree['slug'] ?? ''); ?>" required pattern="[a-zA-Z0-9_-]+" title="<?php echo htmlspecialchars(__t('slug_help')); ?>">
                     </div>
                     <small style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem; display: block;"><?php echo htmlspecialchars(__t('slug_help')); ?></small>
                 </div>
@@ -1950,7 +1950,7 @@ if ($manageMode) {
                     <label class="form-label" for="new-slug"><?php echo htmlspecialchars(__t('custom_slug')); ?> <span style="color: var(--danger);">*</span></label>
                     <div class="input-slug-prefix">
                         <span class="slug-addon"><?php echo BASE_URL; ?>tree/</span>
-                        <input type="text" id="new-slug" name="slug" class="input-text" placeholder="spmb-2026" required autocomplete="off" pattern="[a-zA-Z0-9_-]+" title="Gunakan huruf, angka, tanda minus (-), atau underscore (_)">
+                        <input type="text" id="new-slug" name="slug" class="input-text" placeholder="spmb-2026" required autocomplete="off" pattern="[a-zA-Z0-9_-]+" title="<?php echo htmlspecialchars(__t('slug_help')); ?>">
                     </div>
                     <small style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem; display: block;"><?php echo htmlspecialchars(__t('slug_help')); ?></small>
                 </div>
@@ -2144,7 +2144,7 @@ if ($manageMode) {
 
                 <div class="tree-title-row">
                     <h1 class="tree-title"><?php echo $pageTitle; ?></h1>
-                    <span class="verified-badge" title="Verified" aria-label="Verified">
+                    <span class="verified-badge" title="<?php echo htmlspecialchars(__t('verified')); ?>" aria-label="<?php echo htmlspecialchars(__t('verified')); ?>">
                         <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
                     </span>
                 </div>
@@ -2158,9 +2158,9 @@ if ($manageMode) {
                     $hasSocial = !empty($tree['website_url']) || !empty($tree['instagram_url']) || !empty($tree['youtube_url']) || !empty($tree['telegram_url']);
                 ?>
                 <?php if ($hasSocial): ?>
-                <nav class="social-bar" aria-label="Social Media">
+                <nav class="social-bar" aria-label="<?php echo htmlspecialchars(__t('social_section_title')); ?>">
                     <?php if (!empty($tree['website_url'])): ?>
-                    <a href="<?php echo htmlspecialchars($tree['website_url']); ?>" class="social-link" target="_blank" rel="noopener noreferrer" title="Official Website" aria-label="Official Website">
+                    <a href="<?php echo htmlspecialchars($tree['website_url']); ?>" class="social-link" target="_blank" rel="noopener noreferrer" title="<?php echo htmlspecialchars(__t('icon_globe')); ?>" aria-label="<?php echo htmlspecialchars(__t('icon_globe')); ?>">
                         <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/></svg>
                     </a>
                     <?php endif; ?>
@@ -2187,7 +2187,7 @@ if ($manageMode) {
             </header>
 
             <!-- Links Stack -->
-            <section class="link-stack" aria-label="Official Links">
+            <section class="link-stack" aria-label="<?php echo htmlspecialchars(__t('links_in_tree')); ?>">
                 <?php if (empty($treeItems)): ?>
                 <div class="empty-box">
                     <p style="font-weight: 600; color: var(--text-primary);"><?php echo htmlspecialchars(__t('no_active_links')); ?></p>

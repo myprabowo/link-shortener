@@ -27,14 +27,15 @@ try {
                 $destinationUrl = $resolved['url'];
             } else {
                 // All targets offline/unreachable
+                require_once __DIR__ . '/lang.php';
                 http_response_code(503);
                 ?>
 <!DOCTYPE html>
-<html lang="id">
+<html lang="<?php echo htmlspecialchars($currentLang ?? 'id'); ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Layanan Sedang Tidak Dapat Diakses - s.pknstan.id</title>
+    <title><?php echo htmlspecialchars(__t('service_unavailable_title') . ' - ' . __t('brand_title')); ?></title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -128,13 +129,13 @@ try {
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
             </svg>
         </div>
-        <h1>Layanan Sedang Mengalami Gangguan</h1>
-        <p>Sistem mendeteksi tautan tujuan utama dan seluruh server alternatif sedang offline atau tidak dapat dijangkau saat ini. Silakan coba kembali beberapa saat lagi.</p>
+        <h1><?php echo htmlspecialchars(__t('service_unavailable_title')); ?></h1>
+        <p><?php echo htmlspecialchars(__t('service_unavailable_desc')); ?></p>
         <a href="" onclick="window.location.reload(); return false;" class="btn-retry">
             <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
             </svg>
-            Muat Ulang Halaman
+            <?php echo htmlspecialchars(__t('reload_page')); ?>
         </a>
         <div class="brand-footer">s.pknstan.id &bull; Politeknik Keuangan Negara STAN</div>
     </div>

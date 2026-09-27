@@ -29,6 +29,9 @@ $actionError = '';
 if (isset($_GET['updated'])) {
     $actionMessage = __t('link_updated');
 }
+if (isset($_GET['deleted'])) {
+    $actionMessage = __t('link_deleted');
+}
 if (isset($_GET['fallback_saved'])) {
     $actionMessage = __t('fallback_saved');
 }
@@ -39,7 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $isLogge
         if (isset($_POST['id'])) {
             $stmt = $pdo->prepare("DELETE FROM links WHERE id = ?");
             $stmt->execute([$_POST['id']]);
-            header("Location: index.php");
+            header("Location: index.php?deleted=1");
             exit;
         }
     } elseif ($_POST['action'] === 'edit') {
@@ -77,11 +80,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $isLogge
         $alt2Valid = !empty($alt2) ? filter_var($alt2, FILTER_VALIDATE_URL) : null;
 
         if (!$id || !$primaryUrl) {
-            $actionError = 'URL Utama tidak valid atau kosong.';
+            $actionError = __t('invalid_primary_url');
         } elseif (!empty($alt1) && !$alt1Valid) {
-            $actionError = 'Format Link Alternatif 1 tidak valid.';
+            $actionError = __t('invalid_alt1_url');
         } elseif (!empty($alt2) && !$alt2Valid) {
-            $actionError = 'Format Link Alternatif 2 tidak valid.';
+            $actionError = __t('invalid_alt2_url');
         } else {
             try {
                 $hasFallback = ($alt1Valid !== null || $alt2Valid !== null);
@@ -1112,7 +1115,7 @@ if ($isLoggedIn) {
     <div class="app-layout <?php echo !$isLoggedIn ? 'login-mode' : ''; ?>">
         <!-- App Header -->
         <header class="app-header">
-            <a href="index.php" class="brand-block" title="PKNSTAN Link Shortener">
+            <a href="index.php" class="brand-block" title="<?php echo htmlspecialchars(__t('brand_title') . ' - ' . __t('brand_badge')); ?>">
                 <div class="brand-icon" aria-hidden="true">
                     <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
                 </div>
@@ -1259,7 +1262,7 @@ if ($isLoggedIn) {
             <!-- Error Banner -->
             <div id="error-container" class="alert-box alert-error" style="display: none;" role="alert">
                 <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                <span id="error-msg">An unexpected error occurred.</span>
+                <span id="error-msg"><?php echo htmlspecialchars(__t('unexpected_error')); ?></span>
             </div>
 
             <!-- Success Result Card -->
@@ -1278,7 +1281,7 @@ if ($isLoggedIn) {
                             <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
                             <span id="copy-btn-text"><?php echo htmlspecialchars(__t('copy')); ?></span>
                         </button>
-                        <button type="button" class="btn-secondary" id="result-qr-toggle-btn" title="Toggle QR Code preview">
+                        <button type="button" class="btn-secondary" id="result-qr-toggle-btn" title="<?php echo htmlspecialchars(__t('toggle_qr_preview')); ?>">
                             <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4h4v4H4V4zm12 0h4v4h-4V4zM4 16h4v4H4v-4z"/></svg>
                             <span><?php echo htmlspecialchars(__t('qr_code')); ?></span>
                         </button>
@@ -1364,7 +1367,7 @@ if ($isLoggedIn) {
                                                 <?php endif; ?>
                                                 <?php if ($isFallbackActive): ?>
                                                     <span class="badge-fallback" title="<?php echo htmlspecialchars(__t('fallback_flow_hint')); ?>">
-                                                        <span class="health-dot <?php echo $isP1Healthy ? 'health-up' : 'health-down'; ?>"></span>
+                                                        <span class="health-dot <?php echo $isP1Healthy ? 'health-up' : 'health-down'; ?>" title="<?php echo htmlspecialchars($isP1Healthy ? __t('primary_online_tooltip') : __t('primary_down_tooltip')); ?>"></span>
                                                         <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
                                                         <?php echo htmlspecialchars(__t('fallback_badge_active', ['count' => $altCount])); ?>
                                                     </span>
@@ -1404,7 +1407,7 @@ if ($isLoggedIn) {
                                                 <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
                                                 <span><?php echo htmlspecialchars(__t('fallback_btn')); ?></span>
                                                 <?php if ($altCount > 0): ?>
-                                                    <span class="action-count-pill" title="<?php echo $altCount; ?> link alternatif aktif"><?php echo $altCount; ?></span>
+                                                    <span class="action-count-pill" title="<?php echo htmlspecialchars(__t('fallback_active_tooltip', ['count' => $altCount])); ?>"><?php echo $altCount; ?></span>
                                                 <?php endif; ?>
                                             </button>
 
@@ -1543,7 +1546,7 @@ if ($isLoggedIn) {
                         </span>
                         <span id="fb-status-p1" class="health-pill untested"><?php echo htmlspecialchars(__t('status_untested')); ?></span>
                     </div>
-                    <input type="url" name="primary_url" id="fb-primary-url" class="input-text no-icon" required placeholder="https://example.com/jalur-utama" style="font-size: 0.8125rem;">
+                    <input type="url" name="primary_url" id="fb-primary-url" class="input-text no-icon" required placeholder="<?php echo htmlspecialchars(__t('fallback_primary_placeholder')); ?>" style="font-size: 0.8125rem;">
                 </div>
 
                 <!-- Priority 2: Alternative URL 1 -->
@@ -1555,7 +1558,7 @@ if ($isLoggedIn) {
                         </span>
                         <span id="fb-status-p2" class="health-pill untested"><?php echo htmlspecialchars(__t('status_untested')); ?></span>
                     </div>
-                    <input type="url" name="alt_url_1" id="fb-alt-1" class="input-text no-icon" placeholder="https://cadangan1.example.com (opsional)" style="font-size: 0.8125rem;">
+                    <input type="url" name="alt_url_1" id="fb-alt-1" class="input-text no-icon" placeholder="<?php echo htmlspecialchars(__t('fallback_alt1_placeholder')); ?>" style="font-size: 0.8125rem;">
                 </div>
 
                 <!-- Priority 3: Alternative URL 2 -->
@@ -1567,7 +1570,7 @@ if ($isLoggedIn) {
                         </span>
                         <span id="fb-status-p3" class="health-pill untested"><?php echo htmlspecialchars(__t('status_untested')); ?></span>
                     </div>
-                    <input type="url" name="alt_url_2" id="fb-alt-2" class="input-text no-icon" placeholder="https://cadangan2.example.com (opsional)" style="font-size: 0.8125rem;">
+                    <input type="url" name="alt_url_2" id="fb-alt-2" class="input-text no-icon" placeholder="<?php echo htmlspecialchars(__t('fallback_alt2_placeholder')); ?>" style="font-size: 0.8125rem;">
                 </div>
 
                 <!-- Test Connection Trigger & Result Info -->
@@ -1578,7 +1581,7 @@ if ($isLoggedIn) {
                         <div class="spinner" id="fb-test-spinner" style="display: none; width: 12px; height: 12px;" aria-hidden="true"></div>
                     </button>
                     <span style="font-size: 0.7rem; color: var(--text-muted); text-align: right; max-width: 260px;">
-                        Kosongkan alternatif untuk menonaktifkan fallback.
+                        <?php echo htmlspecialchars(__t('fallback_clear_hint')); ?>
                     </span>
                 </div>
 
@@ -1726,7 +1729,7 @@ if ($isLoggedIn) {
                 document.getElementById('link-title').value = '';
                 document.getElementById('custom-code').value = '';
             } else {
-                throw new Error(data.error || 'Failed to shorten URL. Please check input values.');
+                throw new Error(data.error || '<?php echo addslashes(__t('error_shorten_failed')); ?>');
             }
         } catch (err) {
             errorMsg.textContent = err.message;
