@@ -1,6 +1,8 @@
 <?php
 // redirect.php
 require_once 'config.php';
+require_once __DIR__ . '/fallback_helper.php';
+ensureFallbackSchema($pdo);
 
 if (!isset($_GET['code']) || empty($_GET['code'])) {
     header('Location: index.php');

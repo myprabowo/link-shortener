@@ -5,6 +5,8 @@
 // Or via HTTP GET with API Key: https://s.pknstan.id/cron_healthcheck.php?key=rahasia123
 
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/fallback_helper.php';
+ensureFallbackSchema($pdo);
 
 // Verify access if running from web
 $isCli = (php_sapi_name() === 'cli');
