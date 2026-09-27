@@ -3,11 +3,31 @@ CREATE TABLE IF NOT EXISTS links (
   short_code TEXT NOT NULL UNIQUE,
   original_url TEXT NOT NULL,
   title TEXT DEFAULT NULL,
+  link_type TEXT DEFAULT 'direct',
+  check_interval INTEGER DEFAULT 60,
   clicks INTEGER DEFAULT 0,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_short_code ON links (short_code);
+
+CREATE TABLE IF NOT EXISTS link_targets (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  link_id INTEGER NOT NULL,
+  url TEXT NOT NULL,
+  priority INTEGER NOT NULL DEFAULT 1,
+  is_active INTEGER NOT NULL DEFAULT 1,
+  is_healthy INTEGER NOT NULL DEFAULT 1,
+  last_status_code INTEGER DEFAULT NULL,
+  last_checked_at DATETIME DEFAULT NULL,
+  response_time_ms INTEGER DEFAULT NULL,
+  error_message TEXT DEFAULT NULL,
+  clicks INTEGER DEFAULT 0,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (link_id) REFERENCES links (id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_link_targets_link_priority ON link_targets (link_id, priority);
 
 CREATE TABLE IF NOT EXISTS link_trees (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

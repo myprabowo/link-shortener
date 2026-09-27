@@ -77,6 +77,24 @@ $translations = [
         'code_in_use' => 'Kode pendek "/{code}" sudah digunakan oleh tautan lain.',
         'db_error' => 'Terjadi kesalahan database saat menyimpan perubahan.',
 
+        // Fallback & Failover
+        'fallback_btn' => 'Fallback',
+        'fallback_title' => 'Kelola Link Fallback & Alternatif',
+        'fallback_desc' => 'Atur hingga 2 tautan alternatif untuk failover otomatis. Jika link utama offline, pengunjung otomatis dialihkan ke link alternatif.',
+        'fallback_primary_label' => 'URL Utama (Prioritas 1)',
+        'fallback_alt1_label' => 'Link Alternatif 1 (Prioritas 2)',
+        'fallback_alt2_label' => 'Link Alternatif 2 (Prioritas 3)',
+        'fallback_test_btn' => 'Uji Status Koneksi',
+        'fallback_testing' => 'Menguji...',
+        'fallback_save_btn' => 'Simpan Pengaturan Fallback',
+        'fallback_saved' => 'Pengaturan link fallback berhasil disimpan.',
+        'fallback_badge_active' => '{count} Alternatif',
+        'fallback_flow_hint' => 'Alur Failover: URL Utama ➔ (jika offline) ➔ Alternatif 1 ➔ (jika offline) ➔ Alternatif 2',
+        'status_online' => 'Online',
+        'status_offline' => 'Offline',
+        'status_checking' => 'Memeriksa...',
+        'status_untested' => 'Belum diuji',
+
         // Dashboard Linktree Banner
         'tree_banner_title' => 'Halaman Bio Link (Multi-Tree)',
         'tree_banner_desc' => 'Kelola {count} halaman profil tautan dengan URL kustom masing-masing untuk media sosial.',
@@ -228,6 +246,24 @@ $translations = [
         'invalid_data_edit' => 'Invalid data provided for link edit. Title, short code, and destination URL are required.',
         'code_in_use' => 'The short code "/{code}" is already in use by another link.',
         'db_error' => 'Database error while saving changes.',
+
+        // Fallback & Failover
+        'fallback_btn' => 'Fallback',
+        'fallback_title' => 'Manage Fallback & Alternative Links',
+        'fallback_desc' => 'Set up to 2 alternative links for automated failover. If the primary link is offline, visitors are automatically routed to the alternative link.',
+        'fallback_primary_label' => 'Primary URL (Priority 1)',
+        'fallback_alt1_label' => 'Alternative Link 1 (Priority 2)',
+        'fallback_alt2_label' => 'Alternative Link 2 (Priority 3)',
+        'fallback_test_btn' => 'Test Connection Status',
+        'fallback_testing' => 'Testing...',
+        'fallback_save_btn' => 'Save Fallback Settings',
+        'fallback_saved' => 'Fallback settings saved successfully.',
+        'fallback_badge_active' => '{count} Alternates',
+        'fallback_flow_hint' => 'Failover Routing: Primary URL ➔ (if down) ➔ Alternate 1 ➔ (if down) ➔ Alternate 2',
+        'status_online' => 'Online',
+        'status_offline' => 'Offline',
+        'status_checking' => 'Checking...',
+        'status_untested' => 'Not tested',
 
         // Dashboard Linktree Banner
         'tree_banner_title' => 'Bio Link Pages (Multi-Tree)',

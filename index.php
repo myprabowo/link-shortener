@@ -27,8 +27,11 @@ $actionError = '';
 if (isset($_GET['updated'])) {
     $actionMessage = __t('link_updated');
 }
+if (isset($_GET['fallback_saved'])) {
+    $actionMessage = __t('fallback_saved');
+}
 
-// Handle Delete & Edit Actions
+// Handle Delete, Edit, & Fallback Actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $isLoggedIn) {
     if ($_POST['action'] === 'delete') {
         if (isset($_POST['id'])) {
@@ -62,14 +65,78 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $isLogge
                 $actionError = __t('db_error');
             }
         }
+    } elseif ($_POST['action'] === 'save_fallback') {
+        $id = filter_var($_POST['id'] ?? null, FILTER_VALIDATE_INT);
+        $primaryUrl = filter_var(trim($_POST['primary_url'] ?? ''), FILTER_VALIDATE_URL);
+        $alt1 = trim($_POST['alt_url_1'] ?? '');
+        $alt2 = trim($_POST['alt_url_2'] ?? '');
+
+        $alt1Valid = !empty($alt1) ? filter_var($alt1, FILTER_VALIDATE_URL) : null;
+        $alt2Valid = !empty($alt2) ? filter_var($alt2, FILTER_VALIDATE_URL) : null;
+
+        if (!$id || !$primaryUrl) {
+            $actionError = 'URL Utama tidak valid atau kosong.';
+        } elseif (!empty($alt1) && !$alt1Valid) {
+            $actionError = 'Format Link Alternatif 1 tidak valid.';
+        } elseif (!empty($alt2) && !$alt2Valid) {
+            $actionError = 'Format Link Alternatif 2 tidak valid.';
+        } else {
+            try {
+                $hasFallback = ($alt1Valid !== null || $alt2Valid !== null);
+                $newType = $hasFallback ? 'fallback' : 'direct';
+
+                // Update original_url and link_type
+                $updLink = $pdo->prepare("UPDATE links SET original_url = ?, link_type = ? WHERE id = ?");
+                $updLink->execute([$primaryUrl, $newType, $id]);
+
+                // Reset previous targets
+                $delTargets = $pdo->prepare("DELETE FROM link_targets WHERE link_id = ?");
+                $delTargets->execute([$id]);
+
+                if ($hasFallback) {
+                    // Priority 1: Primary URL
+                    $h1 = checkUrlHealth($primaryUrl, 1500);
+                    $ins = $pdo->prepare("INSERT INTO link_targets (link_id, url, priority, is_healthy, last_status_code, last_checked_at, response_time_ms, error_message) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?)");
+                    $ins->execute([$id, $primaryUrl, 1, $h1['is_healthy'] ? 1 : 0, $h1['http_code'] ?: null, $h1['response_time_ms'], $h1['error'] ?: null]);
+
+                    // Priority 2: Alternative 1
+                    if ($alt1Valid) {
+                        $h2 = checkUrlHealth($alt1Valid, 1500);
+                        $ins->execute([$id, $alt1Valid, 2, $h2['is_healthy'] ? 1 : 0, $h2['http_code'] ?: null, $h2['response_time_ms'], $h2['error'] ?: null]);
+                    }
+
+                    // Priority 3: Alternative 2
+                    if ($alt2Valid) {
+                        $h3 = checkUrlHealth($alt2Valid, 1500);
+                        $ins->execute([$id, $alt2Valid, 3, $h3['is_healthy'] ? 1 : 0, $h3['http_code'] ?: null, $h3['response_time_ms'], $h3['error'] ?: null]);
+                    }
+                }
+
+                header("Location: index.php?fallback_saved=1");
+                exit;
+            } catch (PDOException $e) {
+                $actionError = __t('db_error') . ': ' . $e->getMessage();
+            }
+        }
     }
 }
 
 $linksData = [];
+$targetsByLinkId = [];
 if ($isLoggedIn) {
     try {
-        $stmt = $pdo->query("SELECT id, short_code, original_url, title, clicks, created_at FROM links ORDER BY created_at DESC LIMIT 100");
+        $stmt = $pdo->query("SELECT id, short_code, original_url, title, link_type, check_interval, clicks, created_at FROM links ORDER BY created_at DESC LIMIT 100");
         $linksData = $stmt->fetchAll();
+
+        $linkIds = array_column($linksData, 'id');
+        if (!empty($linkIds)) {
+            $inClause = implode(',', array_fill(0, count($linkIds), '?'));
+            $targetStmt = $pdo->prepare("SELECT * FROM link_targets WHERE link_id IN ($inClause) ORDER BY priority ASC");
+            $targetStmt->execute($linkIds);
+            while ($row = $targetStmt->fetch()) {
+                $targetsByLinkId[$row['link_id']][] = $row;
+            }
+        }
     } catch (PDOException $e) {
         $linksData = [];
     }
@@ -775,6 +842,123 @@ if ($isLoggedIn) {
             text-align: center;
         }
 
+        /* Fallback Badge & Indicators */
+        .badge-fallback {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            font-size: 0.6875rem;
+            font-weight: 600;
+            padding: 0.15rem 0.5rem;
+            border-radius: 9999px;
+            background: rgba(99, 102, 241, 0.12);
+            color: #818cf8;
+            border: 1px solid rgba(99, 102, 241, 0.28);
+            margin-left: 0.35rem;
+            vertical-align: middle;
+        }
+
+        .action-count-pill {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 17px;
+            height: 17px;
+            padding: 0 4px;
+            font-size: 0.65rem;
+            font-weight: 700;
+            border-radius: 9999px;
+            background: var(--accent);
+            color: #ffffff;
+            line-height: 1;
+            margin-left: 0.25rem;
+        }
+
+        .health-dot {
+            display: inline-block;
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            margin-right: 0.3rem;
+            vertical-align: middle;
+        }
+        .health-dot.health-up {
+            background-color: #10b981;
+            box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
+        }
+        .health-dot.health-down {
+            background-color: #ef4444;
+            box-shadow: 0 0 6px rgba(239, 68, 68, 0.6);
+        }
+        .health-dot.health-unknown {
+            background-color: #94a3b8;
+        }
+
+        /* Fallback Modal Styles */
+        .fallback-slot-box {
+            background: var(--bg-surface-muted);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: 0.875rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .fallback-slot-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .slot-label {
+            font-size: 0.8125rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+        .health-pill {
+            font-size: 0.6875rem;
+            padding: 0.15rem 0.5rem;
+            border-radius: 9999px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+        .health-pill.up {
+            background: rgba(16, 185, 129, 0.15);
+            color: #10b981;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+        .health-pill.down {
+            background: rgba(239, 68, 68, 0.15);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+        .health-pill.checking {
+            background: rgba(245, 158, 11, 0.15);
+            color: #f59e0b;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+        .health-pill.untested {
+            background: var(--bg-surface-elevated);
+            color: var(--text-muted);
+            border: 1px solid var(--border-subtle);
+        }
+        .fallback-hint-card {
+            background: rgba(59, 130, 246, 0.08);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: var(--radius-sm);
+            padding: 0.625rem 0.875rem;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            line-height: 1.4;
+            display: flex;
+            align-items: flex-start;
+            gap: 0.5rem;
+        }
+
         /* Empty State */
         .empty-state {
             padding: 2.5rem 1.5rem;
@@ -1148,6 +1332,21 @@ if ($isLoggedIn) {
                                     $code = htmlspecialchars($link['short_code']);
                                     $originalUrl = htmlspecialchars($link['original_url']);
                                     $titleText = !empty($link['title']) ? htmlspecialchars($link['title']) : '';
+
+                                    // Targets and fallback info
+                                    $targets = $targetsByLinkId[$link['id']] ?? [];
+                                    $altTargets = array_filter($targets, fn($t) => (int)$t['priority'] > 1);
+                                    $altCount = count($altTargets);
+                                    $isFallbackActive = ($link['link_type'] ?? 'direct') === 'fallback' && $altCount > 0;
+
+                                    $p1Target = null;
+                                    foreach ($targets as $t) {
+                                        if ((int)$t['priority'] === 1) {
+                                            $p1Target = $t;
+                                            break;
+                                        }
+                                    }
+                                    $isP1Healthy = $p1Target ? ((int)$p1Target['is_healthy'] === 1) : true;
                                 ?>
                                 <tr>
                                     <td>
@@ -1157,9 +1356,18 @@ if ($isLoggedIn) {
                                     </td>
                                     <td>
                                         <div class="link-info-stack">
-                                            <?php if ($titleText): ?>
-                                                <span class="link-title-text"><?php echo $titleText; ?></span>
-                                            <?php endif; ?>
+                                            <div style="display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap;">
+                                                <?php if ($titleText): ?>
+                                                    <span class="link-title-text"><?php echo $titleText; ?></span>
+                                                <?php endif; ?>
+                                                <?php if ($isFallbackActive): ?>
+                                                    <span class="badge-fallback" title="<?php echo htmlspecialchars(__t('fallback_flow_hint')); ?>">
+                                                        <span class="health-dot <?php echo $isP1Healthy ? 'health-up' : 'health-down'; ?>"></span>
+                                                        <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                                                        <?php echo htmlspecialchars(__t('fallback_badge_active', ['count' => $altCount])); ?>
+                                                    </span>
+                                                <?php endif; ?>
+                                            </div>
                                             <span class="col-url" title="<?php echo $originalUrl; ?>">
                                                 <?php echo $originalUrl; ?>
                                             </span>
@@ -1182,6 +1390,20 @@ if ($isLoggedIn) {
                                             >
                                                 <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4h4v4H4V4zm12 0h4v4h-4V4zM4 16h4v4H4v-4z"/></svg>
                                                 <span>QR</span>
+                                            </button>
+
+                                            <button
+                                                type="button"
+                                                class="btn-secondary"
+                                                style="height: 32px; padding: 0 0.5rem; font-size: 0.75rem;"
+                                                onclick="openFallbackModal(<?php echo (int)$link['id']; ?>, '<?php echo addslashes($code); ?>', '<?php echo addslashes($titleText); ?>', '<?php echo addslashes($originalUrl); ?>', <?php echo htmlspecialchars(json_encode(array_values($targets)), ENT_QUOTES, 'UTF-8'); ?>)"
+                                                title="<?php echo htmlspecialchars(__t('fallback_title')); ?>"
+                                            >
+                                                <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                                                <span><?php echo htmlspecialchars(__t('fallback_btn')); ?></span>
+                                                <?php if ($altCount > 0): ?>
+                                                    <span class="action-count-pill" title="<?php echo $altCount; ?> link alternatif aktif"><?php echo $altCount; ?></span>
+                                                <?php endif; ?>
                                             </button>
 
                                             <button
@@ -1277,6 +1499,92 @@ if ($isLoggedIn) {
                         <span><?php echo htmlspecialchars(__t('save_changes')); ?></span>
                     </button>
                     <button type="button" class="btn-secondary" id="edit-modal-cancel-btn">
+                        <span><?php echo htmlspecialchars(__t('cancel')); ?></span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Fallback & Alternative Links Modal Dialog -->
+    <div class="modal-backdrop" id="fallback-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="fallback-modal-title" tabindex="-1">
+        <div class="modal-dialog" style="max-width: 540px;">
+            <button type="button" class="modal-close-btn" id="fallback-modal-close-btn" aria-label="<?php echo htmlspecialchars(__t('close')); ?>">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+            
+            <div style="display: flex; align-items: center; gap: 0.625rem;">
+                <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(99, 102, 241, 0.15); color: #818cf8; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                </div>
+                <div>
+                    <h2 class="modal-title" id="fallback-modal-title" style="margin: 0; font-size: 1.125rem; text-align: left;"><?php echo htmlspecialchars(__t('fallback_title')); ?></h2>
+                    <div style="font-size: 0.75rem; color: var(--text-muted); text-align: left;" id="fallback-modal-shortcode">s.pknstan.id/...</div>
+                </div>
+            </div>
+
+            <div class="fallback-hint-card">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink: 0; margin-top: 1px;"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <span><?php echo htmlspecialchars(__t('fallback_desc')); ?></span>
+            </div>
+            
+            <form method="POST" action="index.php" class="form-stack" id="fallback-form">
+                <input type="hidden" name="action" value="save_fallback">
+                <input type="hidden" name="id" id="fallback-modal-id">
+                
+                <!-- Priority 1: Primary Destination URL -->
+                <div class="fallback-slot-box">
+                    <div class="fallback-slot-header">
+                        <span class="slot-label">
+                            <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #3b82f6;"></span>
+                            <?php echo htmlspecialchars(__t('fallback_primary_label')); ?> <span style="color: var(--danger);">*</span>
+                        </span>
+                        <span id="fb-status-p1" class="health-pill untested"><?php echo htmlspecialchars(__t('status_untested')); ?></span>
+                    </div>
+                    <input type="url" name="primary_url" id="fb-primary-url" class="input-text no-icon" required placeholder="https://example.com/jalur-utama" style="font-size: 0.8125rem;">
+                </div>
+
+                <!-- Priority 2: Alternative URL 1 -->
+                <div class="fallback-slot-box">
+                    <div class="fallback-slot-header">
+                        <span class="slot-label">
+                            <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #f59e0b;"></span>
+                            <?php echo htmlspecialchars(__t('fallback_alt1_label')); ?>
+                        </span>
+                        <span id="fb-status-p2" class="health-pill untested"><?php echo htmlspecialchars(__t('status_untested')); ?></span>
+                    </div>
+                    <input type="url" name="alt_url_1" id="fb-alt-1" class="input-text no-icon" placeholder="https://cadangan1.example.com (opsional)" style="font-size: 0.8125rem;">
+                </div>
+
+                <!-- Priority 3: Alternative URL 2 -->
+                <div class="fallback-slot-box">
+                    <div class="fallback-slot-header">
+                        <span class="slot-label">
+                            <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #a855f7;"></span>
+                            <?php echo htmlspecialchars(__t('fallback_alt2_label')); ?>
+                        </span>
+                        <span id="fb-status-p3" class="health-pill untested"><?php echo htmlspecialchars(__t('status_untested')); ?></span>
+                    </div>
+                    <input type="url" name="alt_url_2" id="fb-alt-2" class="input-text no-icon" placeholder="https://cadangan2.example.com (opsional)" style="font-size: 0.8125rem;">
+                </div>
+
+                <!-- Test Connection Trigger & Result Info -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.25rem;">
+                    <button type="button" class="btn-secondary" id="fb-test-conn-btn" style="height: 32px; font-size: 0.75rem; padding: 0 0.75rem;">
+                        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                        <span id="fb-test-btn-text"><?php echo htmlspecialchars(__t('fallback_test_btn')); ?></span>
+                        <div class="spinner" id="fb-test-spinner" style="display: none; width: 12px; height: 12px;" aria-hidden="true"></div>
+                    </button>
+                    <span style="font-size: 0.7rem; color: var(--text-muted); text-align: right; max-width: 260px;">
+                        Kosongkan alternatif untuk menonaktifkan fallback.
+                    </span>
+                </div>
+
+                <div class="modal-actions-row">
+                    <button type="submit" class="btn-primary">
+                        <span><?php echo htmlspecialchars(__t('fallback_save_btn')); ?></span>
+                    </button>
+                    <button type="button" class="btn-secondary" id="fallback-modal-cancel-btn">
                         <span><?php echo htmlspecialchars(__t('cancel')); ?></span>
                     </button>
                 </div>
@@ -1548,6 +1856,141 @@ if ($isLoggedIn) {
     });
 
     /* =====================================================
+       Fallback Modal Dialog Controller
+    ===================================================== */
+    const fallbackModalBackdrop = document.getElementById('fallback-modal-backdrop');
+    const fallbackModalCloseBtn = document.getElementById('fallback-modal-close-btn');
+    const fallbackModalCancelBtn = document.getElementById('fallback-modal-cancel-btn');
+    const fallbackModalIdInput = document.getElementById('fallback-modal-id');
+    const fallbackModalShortcode = document.getElementById('fallback-modal-shortcode');
+    const fbPrimaryUrlInput = document.getElementById('fb-primary-url');
+    const fbAlt1Input = document.getElementById('fb-alt-1');
+    const fbAlt2Input = document.getElementById('fb-alt-2');
+    const fbStatusP1 = document.getElementById('fb-status-p1');
+    const fbStatusP2 = document.getElementById('fb-status-p2');
+    const fbStatusP3 = document.getElementById('fb-status-p3');
+    const fbTestConnBtn = document.getElementById('fb-test-conn-btn');
+    const fbTestBtnText = document.getElementById('fb-test-btn-text');
+    const fbTestSpinner = document.getElementById('fb-test-spinner');
+
+    function renderHealthPill(element, isHealthy, statusCode, responseTimeMs, isChecking) {
+        if (!element) return;
+        if (isChecking) {
+            element.className = 'health-pill checking';
+            element.textContent = '<?php echo addslashes(__t('status_checking')); ?>';
+            return;
+        }
+        if (statusCode === null || statusCode === undefined) {
+            element.className = 'health-pill untested';
+            element.textContent = '<?php echo addslashes(__t('status_untested')); ?>';
+            return;
+        }
+        if (isHealthy) {
+            element.className = 'health-pill up';
+            element.innerHTML = '● <?php echo addslashes(__t('status_online')); ?> (' + statusCode + (responseTimeMs ? ' - ' + responseTimeMs + 'ms' : '') + ')';
+        } else {
+            element.className = 'health-pill down';
+            element.innerHTML = '▲ <?php echo addslashes(__t('status_offline')); ?> (' + (statusCode ? statusCode : 'Timeout') + ')';
+        }
+    }
+
+    function openFallbackModal(id, code, title, primaryUrl, targets) {
+        fallbackModalIdInput.value = id;
+        fallbackModalShortcode.textContent = 's.pknstan.id/' + code + (title ? ' • ' + title : '');
+        fbPrimaryUrlInput.value = primaryUrl || '';
+        fbAlt1Input.value = '';
+        fbAlt2Input.value = '';
+
+        renderHealthPill(fbStatusP1, null, null);
+        renderHealthPill(fbStatusP2, null, null);
+        renderHealthPill(fbStatusP3, null, null);
+
+        // Populate targets if present
+        if (Array.isArray(targets) && targets.length > 0) {
+            targets.forEach(t => {
+                const priority = parseInt(t.priority, 10);
+                const isHealthy = parseInt(t.is_healthy, 10) === 1;
+                const statusCode = t.last_status_code ? parseInt(t.last_status_code, 10) : (t.last_checked_at ? 0 : null);
+                const respTime = t.response_time_ms ? parseInt(t.response_time_ms, 10) : null;
+
+                if (priority === 1) {
+                    if (t.url) fbPrimaryUrlInput.value = t.url;
+                    renderHealthPill(fbStatusP1, isHealthy, statusCode, respTime);
+                } else if (priority === 2) {
+                    fbAlt1Input.value = t.url || '';
+                    renderHealthPill(fbStatusP2, isHealthy, statusCode, respTime);
+                } else if (priority === 3) {
+                    fbAlt2Input.value = t.url || '';
+                    renderHealthPill(fbStatusP3, isHealthy, statusCode, respTime);
+                }
+            });
+        }
+
+        fallbackModalBackdrop.classList.add('is-open');
+        document.body.style.overflow = 'hidden';
+        fbPrimaryUrlInput.focus();
+    }
+
+    function closeFallbackModal() {
+        fallbackModalBackdrop.classList.remove('is-open');
+        document.body.style.overflow = '';
+    }
+
+    if (fallbackModalCloseBtn) fallbackModalCloseBtn.addEventListener('click', closeFallbackModal);
+    if (fallbackModalCancelBtn) fallbackModalCancelBtn.addEventListener('click', closeFallbackModal);
+    if (fallbackModalBackdrop) {
+        fallbackModalBackdrop.addEventListener('click', (e) => {
+            if (e.target === fallbackModalBackdrop) closeFallbackModal();
+        });
+    }
+
+    // Test Connection Button Trigger
+    if (fbTestConnBtn) {
+        fbTestConnBtn.addEventListener('click', async () => {
+            const u1 = fbPrimaryUrlInput.value.trim();
+            const u2 = fbAlt1Input.value.trim();
+            const u3 = fbAlt2Input.value.trim();
+
+            const urlsToTest = [];
+            if (u1) { urlsToTest.push(u1); renderHealthPill(fbStatusP1, null, null, null, true); }
+            if (u2) { urlsToTest.push(u2); renderHealthPill(fbStatusP2, null, null, null, true); } else { renderHealthPill(fbStatusP2, null, null); }
+            if (u3) { urlsToTest.push(u3); renderHealthPill(fbStatusP3, null, null, null, true); } else { renderHealthPill(fbStatusP3, null, null); }
+
+            if (urlsToTest.length === 0) return;
+
+            fbTestBtnText.style.display = 'none';
+            fbTestSpinner.style.display = 'inline-block';
+            fbTestConnBtn.disabled = true;
+
+            try {
+                const resp = await fetch('api.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'test_health', urls: urlsToTest })
+                });
+                const data = await resp.json();
+                if (data.success && Array.isArray(data.results)) {
+                    data.results.forEach(res => {
+                        if (res.url === u1) {
+                            renderHealthPill(fbStatusP1, res.is_healthy, res.http_code, res.response_time_ms);
+                        } else if (res.url === u2) {
+                            renderHealthPill(fbStatusP2, res.is_healthy, res.http_code, res.response_time_ms);
+                        } else if (res.url === u3) {
+                            renderHealthPill(fbStatusP3, res.is_healthy, res.http_code, res.response_time_ms);
+                        }
+                    });
+                }
+            } catch (err) {
+                console.error('Test health error:', err);
+            } finally {
+                fbTestBtnText.style.display = 'inline';
+                fbTestSpinner.style.display = 'none';
+                fbTestConnBtn.disabled = false;
+            }
+        });
+    }
+
+    /* =====================================================
        Global Keyboard Listeners
     ===================================================== */
     document.addEventListener('keydown', (e) => {
@@ -1557,6 +2000,9 @@ if ($isLoggedIn) {
             }
             if (editModalBackdrop && editModalBackdrop.classList.contains('is-open')) {
                 closeEditModal();
+            }
+            if (fallbackModalBackdrop && fallbackModalBackdrop.classList.contains('is-open')) {
+                closeFallbackModal();
             }
         }
     });

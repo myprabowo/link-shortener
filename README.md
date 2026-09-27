@@ -5,12 +5,14 @@ This application provides an interactive web interface for administration and an
 
 ## Features
 1. **Craft Web Interface**: Built with modern, accessible HTML/CSS adhering to antislop principles, complete with Light and Dark themes.
-2. **Link Metadata**: Supports Title/Description, Custom Alias, and Destination URLs.
-3. **Interactive Actions**: View/Download QR codes, Edit existing short links, and Delete links.
-4. **API Endpoint (`api.php`)**: Allows programmatic URL shortening with required title/description, destination URL, and optional custom alias.
-5. **URL Rewriting**: Automatic routing from `s.pknstan.id/xyz` to destination URLs via `.htaccess` or Nginx rewrite rules.
-6. **Click Tracking**: Tracks total clicks per short link.
-7. **Bio Link / Linktree (`tree.php` / `/tree`)**: Dedicated mobile-first bio-link profile page for social media (Instagram, TikTok, WhatsApp), featuring real click counters, QR code generator, and direct administration for adding custom links or importing directly from shortened links.
+2. **Smart Fallback / Failover URLs**: In the link actions menu, configure up to 2 alternative URLs for high availability. Visitors are routed seamlessly to active fallback servers if the primary URL fails health checks.
+3. **Link Metadata**: Supports Title/Description, Custom Alias, and Destination URLs.
+4. **Interactive Actions**: View/Download QR codes, Manage Fallback links, Edit existing short links, and Delete links.
+5. **Proactive Healthcheck Cron (`cron_healthcheck.php`)**: Background CLI or HTTP health monitoring to refresh target availability.
+6. **API Endpoint (`api.php`)**: Allows programmatic URL shortening, real-time health checks, and fallback setup.
+7. **URL Rewriting**: Automatic routing from `s.pknstan.id/xyz` to active destination URLs via `.htaccess` or Nginx rewrite rules.
+8. **Click Tracking**: Tracks total clicks per short link as well as per fallback target.
+9. **Bio Link / Linktree (`tree.php` / `/tree`)**: Dedicated mobile-first bio-link profile page for social media (Instagram, TikTok, WhatsApp), featuring real click counters, QR code generator, and direct administration for adding custom links or importing directly from shortened links.
 
 ---
 
