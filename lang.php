@@ -81,6 +81,20 @@ $translations = [
         'unexpected_error' => 'Terjadi kesalahan yang tidak terduga.',
         'error_shorten_failed' => 'Gagal memendekkan URL. Periksa nilai yang dimasukkan.',
 
+        // Search Links
+        'search_placeholder' => 'Cari judul, URL, atau alias (tekan /)...',
+        'search_links' => 'Cari Tautan',
+        'search_clear' => 'Hapus pencarian',
+        'search_reset' => 'Reset Pencarian',
+        'search_no_results' => 'Tidak ditemukan tautan yang cocok dengan',
+        'search_no_results_desc' => 'Coba periksa ejaan atau gunakan kata kunci lain.',
+        'search_filter_active' => 'Filter pencarian: "{query}"',
+        'clear_filter' => 'Hapus filter',
+        'search_entire_db' => 'Cari di seluruh database',
+        'search_count_all' => '{count} tautan',
+        'search_count_filtered' => '{shown} dari {total} tautan',
+        'show_all_links' => 'Tampilkan Semua Tautan',
+
         // Fallback & Failover
         'fallback_btn' => 'Fallback',
         'fallback_title' => 'Kelola Link Fallback & Alternatif',
@@ -270,6 +284,20 @@ $translations = [
         'toggle_qr_preview' => 'Toggle QR Code preview',
         'unexpected_error' => 'An unexpected error occurred.',
         'error_shorten_failed' => 'Failed to shorten URL. Please check input values.',
+
+        // Search Links
+        'search_placeholder' => 'Search title, URL, or short code (press /)...',
+        'search_links' => 'Search Links',
+        'search_clear' => 'Clear search',
+        'search_reset' => 'Reset Search',
+        'search_no_results' => 'No links found matching',
+        'search_no_results_desc' => 'Check your spelling or try different keywords.',
+        'search_filter_active' => 'Search filter: "{query}"',
+        'clear_filter' => 'Clear filter',
+        'search_entire_db' => 'Search entire database',
+        'search_count_all' => '{count} links',
+        'search_count_filtered' => '{shown} of {total} links',
+        'show_all_links' => 'Show All Links',
 
         // Fallback & Failover
         'fallback_btn' => 'Fallback',

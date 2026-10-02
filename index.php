@@ -126,12 +126,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $isLogge
     }
 }
 
+$searchQuery = isset($_GET['q']) ? trim($_GET['q']) : '';
 $linksData = [];
 $targetsByLinkId = [];
+$totalLinksCount = 0;
+
 if ($isLoggedIn) {
     try {
-        $stmt = $pdo->query("SELECT id, short_code, original_url, title, link_type, check_interval, clicks, created_at FROM links ORDER BY created_at DESC LIMIT 100");
-        $linksData = $stmt->fetchAll();
+        $totalLinksCount = (int) $pdo->query("SELECT COUNT(*) FROM links")->fetchColumn();
+
+        if ($searchQuery !== '') {
+            $like = '%' . $searchQuery . '%';
+            $stmt = $pdo->prepare("SELECT id, short_code, original_url, title, link_type, check_interval, clicks, created_at 
+                                   FROM links 
+                                   WHERE short_code LIKE :search 
+                                      OR original_url LIKE :search 
+                                      OR title LIKE :search 
+                                   ORDER BY created_at DESC LIMIT 100");
+            $stmt->execute([':search' => $like]);
+            $linksData = $stmt->fetchAll();
+        } else {
+            $stmt = $pdo->query("SELECT id, short_code, original_url, title, link_type, check_interval, clicks, created_at FROM links ORDER BY created_at DESC LIMIT 100");
+            $linksData = $stmt->fetchAll();
+        }
 
         $linkIds = array_column($linksData, 'id');
         if (!empty($linkIds)) {
@@ -144,6 +161,7 @@ if ($isLoggedIn) {
         }
     } catch (PDOException $e) {
         $linksData = [];
+        $totalLinksCount = 0;
     }
 }
 ?>
@@ -739,6 +757,15 @@ if ($isLoggedIn) {
             align-items: center;
             justify-content: space-between;
             margin-bottom: 0.875rem;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .inventory-title-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
         }
 
         .inventory-title {
@@ -758,6 +785,155 @@ if ($isLoggedIn) {
             background: var(--bg-surface-muted);
             color: var(--text-secondary);
             border: 1px solid var(--border-subtle);
+            transition: all 0.15s ease;
+        }
+
+        /* Search Form & Input Styles */
+        .search-form-wrap {
+            display: flex;
+            align-items: center;
+            position: relative;
+            width: 100%;
+            max-width: 340px;
+        }
+
+        @media (max-width: 640px) {
+            .search-form-wrap {
+                max-width: 100%;
+            }
+            .inventory-header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+        }
+
+        .search-input-group {
+            position: relative;
+            display: flex;
+            align-items: center;
+            width: 100%;
+        }
+
+        .search-icon-left {
+            position: absolute;
+            left: 0.75rem;
+            color: var(--text-muted);
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+        }
+
+        .search-input {
+            width: 100%;
+            height: 38px;
+            padding: 0 4.25rem 0 2.25rem;
+            font-size: 0.84375rem;
+            font-family: inherit;
+            color: var(--text-primary);
+            background: var(--bg-surface);
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius-md);
+            transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+        }
+
+        .search-input:focus {
+            border-color: var(--border-focus);
+            background: var(--bg-surface);
+            box-shadow: 0 0 0 3px var(--accent-subtle);
+        }
+
+        .search-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .search-clear-btn {
+            position: absolute;
+            right: 2.15rem;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: var(--bg-surface-muted);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-muted);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            transition: all 0.15s ease;
+        }
+
+        .search-clear-btn:hover {
+            background: var(--border-strong);
+            color: var(--text-primary);
+        }
+
+        .search-kbd-hint {
+            position: absolute;
+            right: 0.5rem;
+            font-family: inherit;
+            font-size: 0.6875rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            background: var(--bg-surface-muted);
+            border: 1px solid var(--border-subtle);
+            border-radius: 4px;
+            padding: 1px 6px;
+            line-height: 1.4;
+            pointer-events: none;
+            user-select: none;
+            transition: opacity 0.15s ease;
+        }
+
+        /* Active Filter Indicator Bar */
+        .active-filter-bar {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.875rem;
+            padding: 0.625rem 0.875rem;
+            background: var(--accent-subtle);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            border-radius: var(--radius-md);
+            font-size: 0.8125rem;
+            color: var(--text-primary);
+            justify-content: space-between;
+            flex-wrap: wrap;
+        }
+
+        .filter-chip-remove {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.25rem 0.625rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--accent);
+            background: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            text-decoration: none;
+            transition: all 0.15s ease;
+        }
+
+        .filter-chip-remove:hover {
+            background: var(--danger-subtle);
+            color: var(--danger);
+            border-color: var(--danger-border);
+        }
+
+        /* Keyword Highlighting */
+        mark.search-highlight {
+            background: rgba(234, 179, 8, 0.28);
+            color: inherit;
+            padding: 0 2px;
+            border-radius: 2px;
+            font-weight: 600;
+        }
+
+        [data-theme="dark"] mark.search-highlight {
+            background: rgba(234, 179, 8, 0.35);
+            color: #fef08a;
         }
 
         .table-responsive {
@@ -1301,14 +1477,56 @@ if ($isLoggedIn) {
             <!-- Links Inventory Section -->
             <section class="inventory-section">
                 <div class="inventory-header">
-                    <h2 class="inventory-title">
-                        <span><?php echo htmlspecialchars(__t('recent_links')); ?></span>
-                        <span class="count-badge"><?php echo count($linksData); ?></span>
-                    </h2>
+                    <div class="inventory-title-group">
+                        <h2 class="inventory-title">
+                            <span><?php echo htmlspecialchars(__t('recent_links')); ?></span>
+                            <span class="count-badge" id="links-count-badge"><?php echo count($linksData); ?></span>
+                        </h2>
+                    </div>
+
+                    <?php if (!empty($linksData) || $searchQuery !== ''): ?>
+                    <form method="GET" action="index.php" class="search-form-wrap" id="search-form" role="search">
+                        <div class="search-input-group">
+                            <span class="search-icon-left" aria-hidden="true">
+                                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <circle cx="11" cy="11" r="8"></circle>
+                                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                </svg>
+                            </span>
+                            <input 
+                                type="search" 
+                                name="q" 
+                                id="link-search-input" 
+                                class="search-input" 
+                                placeholder="<?php echo htmlspecialchars(__t('search_placeholder')); ?>" 
+                                value="<?php echo htmlspecialchars($searchQuery); ?>" 
+                                autocomplete="off" 
+                                spellcheck="false" 
+                                aria-label="<?php echo htmlspecialchars(__t('search_links')); ?>"
+                            >
+                            <button type="button" class="search-clear-btn" id="search-clear-btn" aria-label="<?php echo htmlspecialchars(__t('search_clear')); ?>" title="<?php echo htmlspecialchars(__t('search_clear')); ?>" style="display: <?php echo $searchQuery !== '' ? 'flex' : 'none'; ?>;">
+                                <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                            </button>
+                            <kbd class="search-kbd-hint" id="search-kbd-hint" title="Press / to search">/</kbd>
+                        </div>
+                    </form>
+                    <?php endif; ?>
                 </div>
 
+                <?php if ($searchQuery !== ''): ?>
+                <div class="active-filter-bar">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                        <span><?php echo htmlspecialchars(__t('search_filter_active', ['query' => $searchQuery])); ?> (<?php echo count($linksData); ?>)</span>
+                    </div>
+                    <a href="index.php" class="filter-chip-remove">
+                        ✕ <?php echo htmlspecialchars(__t('clear_filter')); ?>
+                    </a>
+                </div>
+                <?php endif; ?>
+
                 <div class="table-responsive">
-                    <table class="data-table">
+                    <table class="data-table" id="links-table">
                         <thead>
                             <tr>
                                 <th scope="col"><?php echo htmlspecialchars(__t('col_short')); ?></th>
@@ -1318,20 +1536,61 @@ if ($isLoggedIn) {
                                 <th scope="col" style="text-align: right;"><?php echo htmlspecialchars(__t('col_actions')); ?></th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="links-table-body">
                             <?php if (empty($linksData)): ?>
-                            <tr>
-                                <td colspan="5">
-                                    <div class="empty-state">
-                                        <div class="empty-state-icon" aria-hidden="true">
-                                            <svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+                                <?php if ($searchQuery !== ''): ?>
+                                <tr>
+                                    <td colspan="5">
+                                        <div class="empty-state">
+                                            <div class="empty-state-icon" aria-hidden="true">
+                                                <svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                                            </div>
+                                            <div class="empty-state-title"><?php echo htmlspecialchars(__t('search_no_results')); ?> "<?php echo htmlspecialchars($searchQuery); ?>"</div>
+                                            <div class="empty-state-desc"><?php echo htmlspecialchars(__t('search_no_results_desc')); ?></div>
+                                            <a href="index.php" class="btn-secondary" style="margin-top: 0.5rem; text-decoration: none;">
+                                                <?php echo htmlspecialchars(__t('clear_filter')); ?>
+                                            </a>
                                         </div>
-                                        <div class="empty-state-title"><?php echo htmlspecialchars(__t('empty_links')); ?></div>
-                                        <div class="empty-state-desc"><?php echo htmlspecialchars(__t('empty_links_desc')); ?></div>
-                                    </div>
-                                </td>
-                            </tr>
+                                    </td>
+                                </tr>
+                                <?php else: ?>
+                                <tr>
+                                    <td colspan="5">
+                                        <div class="empty-state">
+                                            <div class="empty-state-icon" aria-hidden="true">
+                                                <svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+                                            </div>
+                                            <div class="empty-state-title"><?php echo htmlspecialchars(__t('empty_links')); ?></div>
+                                            <div class="empty-state-desc"><?php echo htmlspecialchars(__t('empty_links_desc')); ?></div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <?php endif; ?>
                             <?php else: ?>
+                                <!-- Client-side Search No-Results Row -->
+                                <tr id="client-search-empty" style="display: none;">
+                                    <td colspan="5">
+                                        <div class="empty-state" style="padding: 2.25rem 1rem;">
+                                            <div class="empty-state-icon" aria-hidden="true">
+                                                <svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                                    <circle cx="11" cy="11" r="8"></circle>
+                                                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                                </svg>
+                                            </div>
+                                            <div class="empty-state-title"><?php echo htmlspecialchars(__t('search_no_results')); ?> "<span id="client-empty-query"></span>"</div>
+                                            <div class="empty-state-desc"><?php echo htmlspecialchars(__t('search_no_results_desc')); ?></div>
+                                            <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem; flex-wrap: wrap; justify-content: center;">
+                                                <button type="button" class="btn-secondary" id="client-empty-reset-btn">
+                                                    <?php echo htmlspecialchars(__t('search_reset')); ?>
+                                                </button>
+                                                <button type="submit" form="search-form" class="btn-primary" style="height: 36px; font-size: 0.8125rem;">
+                                                    <?php echo htmlspecialchars(__t('search_entire_db')); ?>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+
                                 <?php foreach ($linksData as $link): 
                                     $shortUrl = BASE_URL . htmlspecialchars($link['short_code']);
                                     $code = htmlspecialchars($link['short_code']);
@@ -1353,9 +1612,12 @@ if ($isLoggedIn) {
                                     }
                                     $isP1Healthy = $p1Target ? ((int)$p1Target['is_healthy'] === 1) : true;
                                 ?>
-                                <tr>
+                                <tr class="link-data-row" 
+                                    data-short="<?php echo htmlspecialchars(strtolower($link['short_code'])); ?>" 
+                                    data-title="<?php echo htmlspecialchars(strtolower($link['title'] ?? '')); ?>" 
+                                    data-url="<?php echo htmlspecialchars(strtolower($link['original_url'])); ?>">
                                     <td>
-                                        <a href="<?php echo $shortUrl; ?>" target="_blank" rel="noopener noreferrer" class="col-short">
+                                        <a href="<?php echo $shortUrl; ?>" target="_blank" rel="noopener noreferrer" class="col-short search-target-short">
                                             /<?php echo $code; ?>
                                         </a>
                                     </td>
@@ -1363,7 +1625,7 @@ if ($isLoggedIn) {
                                         <div class="link-info-stack">
                                             <div style="display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap;">
                                                 <?php if ($titleText): ?>
-                                                    <span class="link-title-text"><?php echo $titleText; ?></span>
+                                                    <span class="link-title-text search-target-title"><?php echo $titleText; ?></span>
                                                 <?php endif; ?>
                                                 <?php if ($isFallbackActive): ?>
                                                     <span class="badge-fallback" title="<?php echo htmlspecialchars(__t('fallback_flow_hint')); ?>">
@@ -1373,7 +1635,7 @@ if ($isLoggedIn) {
                                                     </span>
                                                 <?php endif; ?>
                                             </div>
-                                            <span class="col-url" title="<?php echo $originalUrl; ?>">
+                                            <span class="col-url search-target-url" title="<?php echo $originalUrl; ?>">
                                                 <?php echo $originalUrl; ?>
                                             </span>
                                         </div>
@@ -1994,6 +2256,165 @@ if ($isLoggedIn) {
             }
         });
     }
+
+    /* =====================================================
+       Link Search & Instant Filter Manager
+    ===================================================== */
+    const SearchManager = (() => {
+        const searchInput = document.getElementById('link-search-input');
+        const clearBtn = document.getElementById('search-clear-btn');
+        const kbdHint = document.getElementById('search-kbd-hint');
+        const countBadge = document.getElementById('links-count-badge');
+        const emptyRow = document.getElementById('client-search-empty');
+        const emptyQuerySpan = document.getElementById('client-empty-query');
+        const emptyResetBtn = document.getElementById('client-empty-reset-btn');
+        const tableBody = document.getElementById('links-table-body');
+
+        function escapeRegExp(string) {
+            return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
+
+        function highlightElement(el, words) {
+            if (!el) return;
+            if (!el.hasAttribute('data-original-html')) {
+                el.setAttribute('data-original-html', el.innerHTML);
+            }
+
+            if (!words || words.length === 0) {
+                el.innerHTML = el.getAttribute('data-original-html');
+                return;
+            }
+
+            const baseText = el.getAttribute('data-original-html').replace(/<\/?mark[^>]*>/gi, '');
+            const pattern = words.map(w => escapeRegExp(w)).join('|');
+            const regex = new RegExp(`(${pattern})`, 'gi');
+            el.innerHTML = baseText.replace(regex, '<mark class="search-highlight">$1</mark>');
+        }
+
+        function clearElementHighlight(el) {
+            if (!el) return;
+            if (el.hasAttribute('data-original-html')) {
+                el.innerHTML = el.getAttribute('data-original-html');
+            }
+        }
+
+        function filterRows() {
+            if (!searchInput) return;
+            const rawVal = searchInput.value;
+            const query = rawVal.trim().toLowerCase();
+
+            // Toggle clear button and kbd badge
+            if (clearBtn) {
+                clearBtn.style.display = rawVal.length > 0 ? 'flex' : 'none';
+            }
+            if (kbdHint) {
+                kbdHint.style.display = rawVal.length > 0 ? 'none' : 'block';
+            }
+
+            const rows = tableBody ? Array.from(tableBody.querySelectorAll('.link-data-row')) : [];
+            const total = rows.length;
+
+            if (query === '') {
+                rows.forEach(row => {
+                    row.style.display = '';
+                    row.querySelectorAll('.search-target-short, .search-target-title, .search-target-url').forEach(clearElementHighlight);
+                });
+                if (emptyRow) emptyRow.style.display = 'none';
+                if (countBadge) countBadge.textContent = total;
+                return;
+            }
+
+            const words = query.split(/\s+/).filter(Boolean);
+            let matchCount = 0;
+
+            rows.forEach(row => {
+                const shortVal = (row.dataset.short || '');
+                const titleVal = (row.dataset.title || '');
+                const urlVal = (row.dataset.url || '');
+                const haystack = `${shortVal} ${titleVal} ${urlVal}`;
+
+                const isMatch = words.every(w => haystack.includes(w));
+
+                if (isMatch) {
+                    row.style.display = '';
+                    matchCount++;
+                    row.querySelectorAll('.search-target-short, .search-target-title, .search-target-url').forEach(el => highlightElement(el, words));
+                } else {
+                    row.style.display = 'none';
+                    row.querySelectorAll('.search-target-short, .search-target-title, .search-target-url').forEach(clearElementHighlight);
+                }
+            });
+
+            if (countBadge) {
+                countBadge.textContent = `${matchCount} / ${total}`;
+            }
+
+            if (emptyRow) {
+                if (matchCount === 0) {
+                    emptyRow.style.display = '';
+                    if (emptyQuerySpan) emptyQuerySpan.textContent = rawVal.trim();
+                } else {
+                    emptyRow.style.display = 'none';
+                }
+            }
+        }
+
+        function reset() {
+            if (!searchInput) return;
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('q')) {
+                urlParams.delete('q');
+                const newSearch = urlParams.toString();
+                window.location.href = window.location.pathname + (newSearch ? '?' + newSearch : '');
+                return;
+            }
+            searchInput.value = '';
+            filterRows();
+            searchInput.focus();
+        }
+
+        function init() {
+            if (!searchInput) return;
+
+            searchInput.addEventListener('input', filterRows);
+            searchInput.addEventListener('search', filterRows);
+
+            if (clearBtn) {
+                clearBtn.addEventListener('click', reset);
+            }
+
+            if (emptyResetBtn) {
+                emptyResetBtn.addEventListener('click', reset);
+            }
+
+            // Keyboard shortcut: '/' focuses search input if not already typing in an input
+            document.addEventListener('keydown', (e) => {
+                const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+                const isFormInput = activeTag === 'input' || activeTag === 'textarea' || activeTag === 'select';
+
+                if (e.key === '/' && !isFormInput) {
+                    e.preventDefault();
+                    searchInput.focus();
+                    searchInput.select();
+                } else if (e.key === 'Escape' && document.activeElement === searchInput) {
+                    if (searchInput.value !== '') {
+                        reset();
+                    } else {
+                        searchInput.blur();
+                    }
+                }
+            });
+
+            // Initial filter run if input already populated (e.g. from server query)
+            if (searchInput.value.trim() !== '') {
+                filterRows();
+            }
+        }
+
+        return { init, reset, filterRows };
+    })();
+
+    SearchManager.init();
 
     /* =====================================================
        Global Keyboard Listeners

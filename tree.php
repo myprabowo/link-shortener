@@ -1622,13 +1622,26 @@ if ($manageMode) {
             </div>
         </div>
 
-        <!-- Section Header Bar with Add Link Toggle -->
-        <div class="section-header-bar">
-            <h2 class="section-header-title"><?php echo htmlspecialchars(__t('links_in_tree')); ?> (<?php echo count($treeItems); ?>)</h2>
-            <button type="button" class="btn-primary" id="toggle-add-btn" onclick="toggleAddForm()">
-                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
-                <span id="add-btn-text"><?php echo htmlspecialchars(__t('btn_add_link')); ?></span>
-            </button>
+        <!-- Section Header Bar with Add Link Toggle & Search -->
+        <div class="section-header-bar" style="flex-wrap: wrap; gap: 0.75rem;">
+            <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+                <h2 class="section-header-title"><?php echo htmlspecialchars(__t('links_in_tree')); ?> (<span id="tree-items-count"><?php echo count($treeItems); ?></span>)</h2>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                <?php if (!empty($treeItems)): ?>
+                <div style="position: relative; display: flex; align-items: center; width: 100%; max-width: 220px;">
+                    <span style="position: absolute; left: 0.7rem; color: var(--text-muted); pointer-events: none; display: flex; align-items: center;">
+                        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                    </span>
+                    <input type="text" id="tree-link-search" class="input-text" style="height: 36px; padding: 0 1.75rem 0 2.1rem; font-size: 0.8125rem;" placeholder="<?php echo htmlspecialchars(__t('search_links')); ?>..." autocomplete="off">
+                    <button type="button" id="tree-search-clear" style="display: none; position: absolute; right: 0.5rem; border: none; background: transparent; color: var(--text-muted); cursor: pointer; padding: 0; align-items: center; justify-content: center;" title="<?php echo htmlspecialchars(__t('search_clear')); ?>">✕</button>
+                </div>
+                <?php endif; ?>
+                <button type="button" class="btn-primary" id="toggle-add-btn" onclick="toggleAddForm()" style="height: 36px;">
+                    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+                    <span id="add-btn-text"><?php echo htmlspecialchars(__t('btn_add_link')); ?></span>
+                </button>
+            </div>
         </div>
 
         <!-- Add Link Card (Collapsible) -->
@@ -1735,7 +1748,7 @@ if ($manageMode) {
                 $iActive = (int)$it['is_active'] === 1;
                 $iClicks = (int)$it['clicks'];
             ?>
-            <div class="link-admin-card <?php echo !$iActive ? 'is-inactive' : ''; ?>" id="item-card-<?php echo $iId; ?>">
+            <div class="link-admin-card <?php echo !$iActive ? 'is-inactive' : ''; ?>" id="item-card-<?php echo $iId; ?>" data-title="<?php echo htmlspecialchars(strtolower($it['title'])); ?>" data-url="<?php echo htmlspecialchars(strtolower($it['url'])); ?>" data-sub="<?php echo htmlspecialchars(strtolower($it['subtitle'] ?? '')); ?>">
                 <div class="link-card-left">
                     <!-- Reorder Buttons -->
                     <div class="reorder-group">
@@ -2489,6 +2502,53 @@ if ($manageMode) {
                 subInput.value = selectedOpt.getAttribute('data-sub') || '';
             }
         }
+
+        // Tree Link Search Filter
+        (function() {
+            const searchInput = document.getElementById('tree-link-search');
+            const clearBtn = document.getElementById('tree-search-clear');
+            const countEl = document.getElementById('tree-items-count');
+            if (!searchInput) return;
+
+            const cards = Array.from(document.querySelectorAll('.items-stack .link-admin-card'));
+            const total = cards.length;
+
+            function filterTreeLinks() {
+                const query = searchInput.value.trim().toLowerCase();
+                if (clearBtn) clearBtn.style.display = query ? 'flex' : 'none';
+
+                if (!query) {
+                    cards.forEach(c => c.style.display = '');
+                    if (countEl) countEl.textContent = total;
+                    return;
+                }
+
+                const words = query.split(/\s+/).filter(Boolean);
+                let matched = 0;
+
+                cards.forEach(card => {
+                    const text = `${card.dataset.title || ''} ${card.dataset.url || ''} ${card.dataset.sub || ''}`;
+                    const isMatch = words.every(w => text.includes(w));
+                    if (isMatch) {
+                        card.style.display = '';
+                        matched++;
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+
+                if (countEl) countEl.textContent = `${matched}/${total}`;
+            }
+
+            searchInput.addEventListener('input', filterTreeLinks);
+            if (clearBtn) {
+                clearBtn.addEventListener('click', function() {
+                    searchInput.value = '';
+                    filterTreeLinks();
+                    searchInput.focus();
+                });
+            }
+        })();
 
         window.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
